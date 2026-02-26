@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FindRec TO — Toronto Parks & Recreation
 
-## Getting Started
+> One-stop destination for Toronto Parks & Recreation activities, rinks, programs and facilities.
 
-First, run the development server:
+**Repo:** https://github.com/RohanSartho/FindRec_TO
+**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres + PostGIS + Auth) · Vercel
+**Data:** Toronto Open Data (CKAN) · Open Government Licence – Toronto
+**Attribution:** Contains information licensed under the Open Government Licence – Toronto.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Stack
+- Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
+- Supabase (Postgres + PostGIS + Auth + Edge Functions)
+- Vercel (hosting)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
+1. Create a Supabase project at https://supabase.com
+2. Fill in `.env.local` with your project URL and keys:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   ```
+3. Run `npx supabase db push` to apply migrations
+4. Enable PostGIS in Supabase dashboard: Database → Extensions → postgis
+5. Deploy edge functions: `npx supabase functions deploy`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
+- Browse all 135 Toronto ice rinks (indoor + outdoor)
+- Filter by district, type, or location (Near Me via geolocation)
+- Live rink status (open/closed/service alert) synced every 15 minutes
+- Drop-in and registered program timetable per rink (day/week/all views)
+- Favourites with Google OAuth or email/password auth
+- Rink detail pages with address, dimensions, operator info
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Data Sources
+- Toronto Open Data (CKAN): https://open.toronto.ca
+- Live rink status: https://www.toronto.ca/data/parks/live/skate_allupdates.json
+- Licence: Open Government Licence – Toronto
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Sync Schedule
+- Facility/program data: weekly (Sunday 7am UTC via Supabase Edge Function cron)
+- Live rink status: every 15 minutes (Supabase Edge Function cron)

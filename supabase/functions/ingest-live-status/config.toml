@@ -1,0 +1,5 @@
+[functions.ingest-live-status]
+verify_jwt = false
+
+[[functions.ingest-live-status.cron]]
+schedule = "*/15 * * * *"  # Every 15 minutes

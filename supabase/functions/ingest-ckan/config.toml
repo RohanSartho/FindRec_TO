@@ -1,0 +1,5 @@
+[functions.ingest-ckan]
+verify_jwt = false
+
+[[functions.ingest-ckan.cron]]
+schedule = "0 7 * * 0"  # Every Sunday at 7am UTC (3am ET)
