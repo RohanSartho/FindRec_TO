@@ -174,9 +174,20 @@ export function DropInResultsTable({
                           )}
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <div className="flex items-center gap-1 text-gray-500 text-xs">
-                            <MapPin size={11} className="shrink-0" />
-                            {session.locations?.address ?? "—"}
+                          <div className="flex items-center gap-1 text-xs">
+                            <MapPin size={11} className="shrink-0 text-gray-400" />
+                            {session.locations?.address ? (
+                              <a
+                                href={`https://maps.google.com/?q=${encodeURIComponent(session.locations.address + ", Toronto, ON")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                {session.locations.address}
+                              </a>
+                            ) : (
+                              <span className="text-gray-500">—</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">

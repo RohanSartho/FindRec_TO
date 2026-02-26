@@ -229,7 +229,14 @@ export default function SkatingPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {rinks.map((rink) => (
+              {(isNearMe
+                ? rinks
+                : [...rinks].sort((a, b) => {
+                    const nameA = (a.public_name || a.asset_name || "").toLowerCase();
+                    const nameB = (b.public_name || b.asset_name || "").toLowerCase();
+                    return nameA.localeCompare(nameB);
+                  })
+              ).map((rink) => (
                 <RinkCard key={rink.asset_id} rink={rink} />
               ))}
             </div>
@@ -238,7 +245,7 @@ export default function SkatingPage() {
       ) : (
         /* Drop-ins Today mode */
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
-          <div className="lg:sticky lg:top-20">
+          <div className="lg:sticky lg:top-20 lg:overflow-y-auto lg:max-h-[calc(100vh-5rem)]">
             <DropInFilterPanel
               filters={dropinFilters}
               onChange={setDropinFilters}

@@ -196,6 +196,16 @@ export function DropInFilterPanel({
         </div>
       </div>
 
+      {/* Search button */}
+      <button
+        onClick={onSearch}
+        disabled={loading}
+        className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {loading && <Loader2 size={14} className="animate-spin" />}
+        {loading ? "Searching..." : "Find Drop-ins"}
+      </button>
+
       {/* Program type filter */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -270,15 +280,6 @@ export function DropInFilterPanel({
         </div>
       </div>
 
-      {/* Search button */}
-      <button
-        onClick={onSearch}
-        disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {loading && <Loader2 size={14} className="animate-spin" />}
-        {loading ? "Searching..." : "Find Drop-ins"}
-      </button>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   formatTimeRange, formatAgeRange, compactTitle, activityTypeColor,
 } from "@/lib/utils/timetable";
 
-type View = "day" | "week" | "all";
+type View = "day" | "week";
 
 interface DropIn {
   course_id: number;
@@ -78,7 +78,7 @@ export function Timetable({ assetId }: { assetId: number }) {
       {/* View selector */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex bg-gray-100 rounded-xl overflow-hidden">
-          {(["day", "week", "all"] as View[]).map((v) => (
+          {(["day", "week"] as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -88,7 +88,7 @@ export function Timetable({ assetId }: { assetId: number }) {
                   : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {v === "day" ? "Today" : v === "week" ? "This Week" : "All"}
+              {v === "day" ? "Today" : "This Week"}
             </button>
           ))}
         </div>
@@ -154,13 +154,13 @@ export function Timetable({ assetId }: { assetId: number }) {
                 )}
               </div>
             ) : (
-              // Day / All view
+              // Day view
               <div className="space-y-2">
                 {dropins.length === 0 ? (
                   <EmptyState message="No drop-in sessions for this day." />
                 ) : (
                   dropins.map((d) => (
-                    <DropInRow key={`${d.course_id}-${d.day_of_week}`} dropin={d} showDay={view === "all"} />
+                    <DropInRow key={`${d.course_id}-${d.day_of_week}`} dropin={d} />
                   ))
                 )}
               </div>
