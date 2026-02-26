@@ -98,12 +98,16 @@ async function batchUpsert(
   supabase: any,
   table: string,
   rows: any[],
-  onConflict: string
+  batchSize: number,
+  onConflict?: string
 ): Promise<void> {
-  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
-    const chunk = rows.slice(i, i + UPSERT_CHUNK);
-    const { error } = await supabase.from(table).upsert(chunk, { onConflict });
-    if (error) throw new Error(`${table} upsert (offset ${i}): ${error.message}`);
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const upsertOptions = onConflict
+      ? { onConflict, ignoreDuplicates: false }
+      : { ignoreDuplicates: false };
+    const { error } = await supabase.from(table).upsert(batch, upsertOptions);
+    if (error) throw new Error(`batchUpsert ${table}: ${error.message}`);
   }
 }
 
@@ -143,7 +147,7 @@ Deno.serve(async (_req) => {
         district: r["Community Council Area"] ?? null,
         ...(r["geometry"] ? { raw_geometry: JSON.parse(r["geometry"]) } : {}),
       }));
-      await batchUpsert(supabase, "locations", locations, "id");
+      await batchUpsert(supabase, "locations", locations, UPSERT_CHUNK, "id");
       rowCounts.locations = locations.length;
     }
 
@@ -193,7 +197,7 @@ Deno.serve(async (_req) => {
         activity_type: "skating",
         metadata: {},
       }));
-      await batchUpsert(supabase, "rinks", rinks, "asset_id");
+      await batchUpsert(supabase, "rinks", rinks, UPSERT_CHUNK, "asset_id");
       rowCounts.indoor_rinks = rinks.length;
     }
 
@@ -243,7 +247,7 @@ Deno.serve(async (_req) => {
         activity_type: "skating",
         metadata: {},
       }));
-      await batchUpsert(supabase, "rinks", rinks, "asset_id");
+      await batchUpsert(supabase, "rinks", rinks, UPSERT_CHUNK, "asset_id");
       rowCounts.outdoor_rinks = rinks.length;
     }
 
@@ -281,7 +285,7 @@ Deno.serve(async (_req) => {
             metadata: {},
           };
         });
-        await batchUpsert(supabase, "programs", programs, "course_id");
+        await batchUpsert(supabase, "programs", programs, UPSERT_CHUNK, "course_id");
         programCount += programs.length;
       });
       rowCounts.programs = programCount;
@@ -315,14 +319,20 @@ Deno.serve(async (_req) => {
             metadata: {},
           };
         });
-        // Upsert on (course_id, location_id) — safe for re-runs now that unique constraint exists.
-        // Rows with null course_id skip ON CONFLICT and are inserted fresh each run.
-        const { error } = await supabase.from("dropins").upsert(dropins, {
-          onConflict: "course_id,location_id",
-          ignoreDuplicates: true,
+        // Deduplicate within this CKAN page by (course_id, location_id, first_date)
+        // Some CKAN pages contain duplicate session rows; Postgres rejects intra-batch conflicts.
+        const seen = new Set<string>();
+        const dedupedDropins = dropins.filter((d) => {
+          if (!d.course_id || !d.first_date) return true; // null course_id rows skip dedup
+          const key = `${d.course_id}-${d.location_id}-${d.first_date}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
         });
-        if (error) throw new Error(`dropins upsert (offset ${dropinCount}): ${error.message}`);
-        dropinCount += dropins.length;
+        // Upsert on (course_id, location_id, first_date) — each session is uniquely identified
+        // by its course, location, and date. Rows with null course_id are inserted fresh each run.
+        await batchUpsert(supabase, "dropins", dedupedDropins, UPSERT_CHUNK, "course_id,location_id,first_date");
+        dropinCount += dedupedDropins.length;
       });
       rowCounts.dropins = dropinCount;
     }

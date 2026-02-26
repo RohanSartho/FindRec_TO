@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, Loader2 } from "lucide-react";
 import {
-  DAY_ABBRS, DAY_LABELS, getTodayAbbr, getTodayISO,
+  DAY_LABELS, getTodayISO,
   formatTimeRange, formatAgeRange, compactTitle, activityTypeColor,
 } from "@/lib/utils/timetable";
 
@@ -62,13 +62,16 @@ export function Timetable({ assetId }: { assetId: number }) {
       .finally(() => setLoading(false));
   }, [assetId, view, selectedDate]);
 
-  const todayAbbr = getTodayAbbr();
-
-  // Group by day for week view
-  const dropinsByDay = DAY_ABBRS.reduce((acc, day) => {
-    acc[day] = dropins.filter((d) => d.day_of_week === day);
+  // Group by actual date for week view
+  const dropinsByDate = dropins.reduce((acc, d) => {
+    const date = d.first_date ?? d.day_of_week ?? "unknown";
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(d);
     return acc;
   }, {} as Record<string, DropIn[]>);
+
+  // Get sorted unique dates
+  const sortedDates = Object.keys(dropinsByDate).sort();
 
   return (
     <div className="space-y-4">
@@ -117,33 +120,37 @@ export function Timetable({ assetId }: { assetId: number }) {
             </h3>
 
             {view === "week" ? (
-              // Week view — grouped by day
               <div className="space-y-4">
-                {DAY_ABBRS.map((day) => {
-                  const items = dropinsByDay[day];
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={day}>
-                      <p className={`text-xs font-semibold mb-2 ${
-                        day === todayAbbr ? "text-blue-600" : "text-gray-500"
-                      }`}>
-                        {DAY_LABELS[day]}
-                        {day === todayAbbr && (
-                          <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
-                            Today
-                          </span>
-                        )}
-                      </p>
-                      <div className="space-y-2">
-                        {items.map((d) => (
-                          <DropInRow key={`${d.course_id}-${day}`} dropin={d} />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {Object.values(dropinsByDay).every((v) => v.length === 0) && (
+                {sortedDates.length === 0 ? (
                   <EmptyState message="No drop-in sessions this week." />
+                ) : (
+                  sortedDates.map((date) => {
+                    const items = dropinsByDate[date];
+                    const dateObj = new Date(date + "T00:00:00");
+                    const isToday = date === getTodayISO();
+                    const dateLabel = dateObj.toLocaleDateString("en-CA", {
+                      weekday: "long", month: "short", day: "numeric",
+                    });
+                    return (
+                      <div key={date}>
+                        <p className={`text-xs font-semibold mb-2 ${
+                          isToday ? "text-blue-600" : "text-gray-500"
+                        }`}>
+                          {dateLabel}
+                          {isToday && (
+                            <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
+                              Today
+                            </span>
+                          )}
+                        </p>
+                        <div className="space-y-2">
+                          {items.map((d) => (
+                            <DropInRow key={`${d.course_id}-${date}`} dropin={d} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             ) : (

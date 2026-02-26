@@ -25,8 +25,15 @@ export async function GET(
   };
   const targetDayAbbr = DAY_MAP[targetDate.getDay()];
 
-  // Week range for "week" view (Mon–Sun of target date's week)
-  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  // Calculate week bounds (Mon–Sun) of target date's week
+  const dayOfWeek = targetDate.getDay(); // 0 = Sun
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(targetDate);
+  monday.setDate(targetDate.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const weekStart = monday.toISOString().split("T")[0];
+  const weekEnd = sunday.toISOString().split("T")[0];
 
   // First get the rink's location_id from asset_id
   const { data: rink, error: rinkError } = await supabase
@@ -45,19 +52,29 @@ export async function GET(
     return NextResponse.json({ data: { dropins: [], programs: [], meta: { location_id: null, view, date: dateParam, day: targetDayAbbr } } });
   }
 
-  // Fetch drop-ins
+  // Fetch drop-ins — each row is a single-day session, filter by first_date
   let dropinQuery = supabase
     .from("dropins")
     .select("course_id, course_title, section, day_of_week, first_date, last_date, start_time, end_time, min_age_months, max_age_months, activity_type")
     .eq("location_id", locationId)
-    .lte("first_date", dateParam)
-    .gte("last_date", dateParam)
-    .order("start_time");
+    .order("first_date", { ascending: true })
+    .order("start_time", { ascending: true });
 
   if (view === "day") {
-    dropinQuery = dropinQuery.eq("day_of_week", targetDayAbbr);
+    // Single day — match exact date
+    dropinQuery = dropinQuery.eq("first_date", dateParam);
   } else if (view === "week") {
-    dropinQuery = dropinQuery.in("day_of_week", weekDays);
+    // Full week — all sessions from Monday to Sunday
+    dropinQuery = dropinQuery
+      .gte("first_date", weekStart)
+      .lte("first_date", weekEnd);
+  } else {
+    // All — show next 60 days from target date
+    const futureDate = new Date(targetDate);
+    futureDate.setDate(targetDate.getDate() + 60);
+    dropinQuery = dropinQuery
+      .gte("first_date", dateParam)
+      .lte("first_date", futureDate.toISOString().split("T")[0]);
   }
 
   const { data: dropins, error: dropinError } = await dropinQuery;
