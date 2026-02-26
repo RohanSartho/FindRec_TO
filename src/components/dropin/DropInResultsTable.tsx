@@ -64,9 +64,9 @@ export function DropInResultsTable({
 
   if (groups.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
+      <div className="text-center py-16 text-gray-500">
         <p className="text-lg font-medium mb-1">No drop-in sessions found</p>
-        <p className="text-sm">
+        <p className="text-base">
           Try a different date, location, or program type.
         </p>
       </div>
@@ -78,23 +78,23 @@ export function DropInResultsTable({
       {/* Summary header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <p className="text-sm font-medium text-gray-900">
+          <p className="text-base font-medium text-gray-900">
             {total} session{total !== 1 ? "s" : ""} on {dateLabel}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-sm text-gray-500">
             {groups.length} program type{groups.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={expandAll}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-sm text-blue-600 hover:underline"
           >
             Expand all
           </button>
           <button
             onClick={collapseAll}
-            className="text-xs text-gray-400 hover:underline"
+            className="text-sm text-gray-500 hover:underline"
           >
             Collapse all
           </button>
@@ -115,10 +115,10 @@ export function DropInResultsTable({
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left"
             >
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-gray-900 text-base">
                   {group.program_type}
                 </span>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                <span className="text-sm bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
                   {group.session_count} location
                   {group.session_count !== 1 ? "s" : ""}
                 </span>
@@ -136,19 +136,19 @@ export function DropInResultsTable({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-t border-gray-100 bg-gray-50">
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="text-left px-5 py-2.5 text-sm font-semibold text-gray-600 uppercase tracking-wide">
                         Location
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">
+                      <th className="text-left px-4 py-2.5 text-sm font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
                         Address
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">
+                      <th className="text-left px-4 py-2.5 text-sm font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
                         District
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="text-left px-4 py-2.5 text-sm font-semibold text-gray-600 uppercase tracking-wide">
                         Time
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">
+                      <th className="text-left px-4 py-2.5 text-sm font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
                         Ages
                       </th>
                     </tr>
@@ -159,7 +159,7 @@ export function DropInResultsTable({
                         key={`${session.course_id}-${idx}`}
                         className="hover:bg-blue-50/30 transition"
                       >
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3 text-base">
                           {session.locations?.rinks?.[0]?.asset_id ? (
                             <Link
                               href={`/skating/${session.locations.rinks[0].asset_id}`}
@@ -174,8 +174,8 @@ export function DropInResultsTable({
                           )}
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <div className="flex items-center gap-1 text-xs">
-                            <MapPin size={11} className="shrink-0 text-gray-400" />
+                          <div className="flex items-center gap-1 text-sm">
+                            <MapPin size={12} className="shrink-0 text-gray-400" />
                             {session.locations?.address ? (
                               <a
                                 href={`https://maps.google.com/?q=${encodeURIComponent(session.locations.address + ", Toronto, ON")}`}
@@ -191,17 +191,17 @@ export function DropInResultsTable({
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-sm text-gray-600">
                             {session.locations?.district ?? "—"}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-medium text-gray-900 whitespace-nowrap">
+                          <span className="text-base font-medium text-gray-900 whitespace-nowrap">
                             {formatTimeRange(session.start_time, session.end_time)}
                           </span>
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-sm text-gray-600">
                             {formatAgeRange(
                               session.min_age_months,
                               session.max_age_months

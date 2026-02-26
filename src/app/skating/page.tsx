@@ -127,7 +127,7 @@ export default function SkatingPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Skating in Toronto</h1>
@@ -244,7 +244,7 @@ export default function SkatingPage() {
         </>
       ) : (
         /* Drop-ins Today mode */
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
           <div className="lg:sticky lg:top-20 lg:overflow-y-auto lg:max-h-[calc(100vh-5rem)]">
             <DropInFilterPanel
               filters={dropinFilters}

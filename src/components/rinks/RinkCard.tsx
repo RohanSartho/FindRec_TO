@@ -49,10 +49,10 @@ export function RinkCard({ rink }: RinkCardProps) {
       <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
         <Link
           href={`/skating/${rink.asset_id}`}
-          className="absolute inset-0 rounded-2xl z-0"
+          className="absolute inset-0 rounded-2xl z-10"
           aria-label={displayName}
         />
-        <div className="relative z-10 flex items-start justify-between gap-2">
+        <div className="relative z-20 flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {rink.rink_type === "indoor" ? (
@@ -71,7 +71,7 @@ export function RinkCard({ rink }: RinkCardProps) {
           <button
             onClick={(e) => { e.stopPropagation(); handleFavourite(); }}
             disabled={loading}
-            className="relative z-10 shrink-0 p-1.5 rounded-full hover:bg-gray-50 transition"
+            className="relative z-20 shrink-0 p-1.5 rounded-full hover:bg-gray-50 transition"
             aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
           >
             <Heart
@@ -87,13 +87,13 @@ export function RinkCard({ rink }: RinkCardProps) {
         </div>
 
         {rink.locations?.address && (
-          <div className="relative z-10 flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <MapPin size={12} className="shrink-0" />
             <span className="truncate">{rink.locations.address}</span>
           </div>
         )}
 
-        <div className="relative z-10 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <StatusBadge status={status} />
           {rink.has_boards && (
             <span className="text-xs text-gray-400">Boards</span>
@@ -101,7 +101,7 @@ export function RinkCard({ rink }: RinkCardProps) {
         </div>
 
         {liveStatus?.reason && (
-          <p className="relative z-10 text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
+          <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
             {liveStatus.reason}
           </p>
         )}

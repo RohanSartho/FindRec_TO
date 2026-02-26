@@ -104,10 +104,10 @@ export function DropInFilterPanel({
   }));
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-5">
+    <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-sm p-5 space-y-5">
       {/* Date picker */}
       <div>
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Date
         </label>
         <input
@@ -120,13 +120,14 @@ export function DropInFilterPanel({
 
       {/* Location filter */}
       <div>
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Location
         </label>
-        <div className="flex flex-wrap gap-2 items-center">
+        {/* Near Me + District always side by side */}
+        <div className="flex gap-2 items-center">
           {/* Near Me */}
           {filters.isNearMe ? (
-            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-sm text-blue-700">
+            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-sm text-blue-700 shrink-0">
               <MapPin size={13} />
               <span>Near Me</span>
               <button onClick={clearNearMe} className="ml-1 hover:text-blue-900">
@@ -137,7 +138,7 @@ export function DropInFilterPanel({
             <button
               onClick={handleNearMe}
               disabled={geoLoading}
-              className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 transition"
+              className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 transition shrink-0"
             >
               {geoLoading ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -150,13 +151,13 @@ export function DropInFilterPanel({
 
           {/* District dropdown */}
           {!filters.isNearMe && (
-            <div className="relative">
+            <div className="relative flex-1">
               <select
                 value={filters.district}
                 onChange={(e) =>
                   onChange({ ...filters, district: e.target.value })
                 }
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {DISTRICTS.map((d) => (
                   <option key={d.value} value={d.value}>
@@ -173,13 +174,13 @@ export function DropInFilterPanel({
 
           {/* Radius (only when near me) */}
           {filters.isNearMe && (
-            <div className="relative">
+            <div className="relative flex-1">
               <select
                 value={filters.radiusKm}
                 onChange={(e) =>
                   onChange({ ...filters, radiusKm: e.target.value })
                 }
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {RADIUS_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -209,20 +210,20 @@ export function DropInFilterPanel({
       {/* Program type filter */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
             Program Type
           </label>
           <div className="flex gap-2">
             <button
               onClick={selectAll}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-sm text-blue-600 hover:underline"
             >
               All
             </button>
-            <span className="text-xs text-gray-300">·</span>
+            <span className="text-sm text-gray-300">·</span>
             <button
               onClick={clearAll}
-              className="text-xs text-gray-400 hover:underline"
+              className="text-sm text-gray-400 hover:underline"
             >
               None
             </button>
@@ -237,12 +238,12 @@ export function DropInFilterPanel({
             return (
               <div key={group.key}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700">
                     {group.label}
                   </span>
                   <button
                     onClick={() => selectAllInGroup(group.key)}
-                    className="text-xs text-blue-500 hover:underline"
+                    className="text-sm text-blue-500 hover:underline"
                   >
                     {allSelected ? "Deselect all" : "Select all"}
                   </button>
@@ -255,7 +256,7 @@ export function DropInFilterPanel({
                         key={opt.value}
                         onClick={() => toggleProgram(opt.value)}
                         className={clsx(
-                          "text-xs px-2.5 py-1 rounded-full border transition",
+                          "text-sm px-2.5 py-1 rounded-full border transition",
                           active
                             ? "bg-blue-600 text-white border-blue-600"
                             : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
