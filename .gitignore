@@ -47,7 +47,8 @@ supabase/functions/.cache/
 # IDE / tool configs
 .cursor/
 .vscode/
-.claude/
+.claude/*
+!.claude/commands/
 
 # OS
 Thumbs.db
