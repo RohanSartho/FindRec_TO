@@ -180,16 +180,19 @@ export function DropInFilterPanel({
       </div>
 
       {/* ── Time filter — preset dropdown + custom range, mutually exclusive ── */}
+      {/*   Both sides remain clickable at all times so the user can switch     */}
+      {/*   modes freely. opacity-40 signals the inactive side visually but     */}
+      {/*   pointer-events are NOT blocked — clicking either side activates it. */}
       <div>
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Time of Day
         </label>
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-3">
 
-          {/* Preset dropdown — greyed when range mode is active */}
+          {/* Preset dropdown — greyed (but still clickable) when range is active */}
           <div className={clsx(
-            "relative transition-opacity",
-            timeMode === "range" && "opacity-40 pointer-events-none"
+            "relative transition-opacity shrink-0",
+            timeMode === "range" && "opacity-40"
           )}>
             <select
               value={presetKey}
@@ -207,12 +210,12 @@ export function DropInFilterPanel({
             />
           </div>
 
-          <span className="text-xs text-gray-400 shrink-0">or</span>
+          <span className="text-xs text-gray-400 shrink-0 mt-2.5">or</span>
 
-          {/* Custom From–To — greyed when preset mode is active */}
+          {/* Custom From–To stacked vertically — greyed (but still clickable) when preset is active */}
           <div className={clsx(
-            "flex items-center gap-1.5 transition-opacity",
-            timeMode === "preset" && "opacity-40 pointer-events-none"
+            "flex flex-col gap-1.5 transition-opacity",
+            timeMode === "preset" && "opacity-40"
           )}>
             <div className="relative">
               <select
@@ -227,7 +230,6 @@ export function DropInFilterPanel({
               </select>
               <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
-            <span className="text-xs text-gray-400">–</span>
             <div className="relative">
               <select
                 value={filters.timeTo}
