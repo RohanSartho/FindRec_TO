@@ -17,7 +17,8 @@ export interface DropInFilters {
   lng: number | null;
   radiusKm: string;
   isNearMe: boolean;
-  timeSlot: "all" | "morning" | "afternoon" | "evening";
+  timeFrom: string; // "HH:MM" or "" = no lower limit
+  timeTo: string;   // "HH:MM" or "" = no upper limit
 }
 
 interface DropInFilterPanelProps {
@@ -33,12 +34,26 @@ const GROUP_LABELS = {
   special: "Special Programs",
 };
 
-const TIME_SLOTS = [
-  { value: "all", label: "All Day" },
-  { value: "morning", label: "Morning", sub: "before noon" },
-  { value: "afternoon", label: "Afternoon", sub: "12–5 pm" },
-  { value: "evening", label: "Evening", sub: "after 5 pm" },
+// Preset chips — set both From and To at once
+const TIME_PRESETS = [
+  { label: "All Day",   from: "",      to: ""      },
+  { label: "Morning",   from: "06:00", to: "12:00" },
+  { label: "Afternoon", from: "12:00", to: "17:00" },
+  { label: "Evening",   from: "17:00", to: "23:00" },
 ] as const;
+
+// 4 AM → 11 PM in 1-hour increments
+const TIME_OPTIONS = Array.from({ length: 20 }, (_, i) => {
+  const hour = i + 4; // 4..23
+  const h = String(hour).padStart(2, "0");
+  const label =
+    hour === 12
+      ? "12:00 PM"
+      : hour < 12
+      ? `${hour}:00 AM`
+      : `${hour - 12}:00 PM`;
+  return { value: `${h}:00`, label };
+});
 
 export function DropInFilterPanel({
   filters,
@@ -131,21 +146,72 @@ export function DropInFilterPanel({
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Time of Day
         </label>
-        <div className="flex flex-wrap gap-1.5">
-          {TIME_SLOTS.map((slot) => (
-            <button
-              key={slot.value}
-              onClick={() => onChange({ ...filters, timeSlot: slot.value })}
-              className={clsx(
-                "text-sm px-3 py-1.5 rounded-full border transition",
-                filters.timeSlot === slot.value
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-              )}
+
+        {/* Preset chips */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {TIME_PRESETS.map((preset) => {
+            const active =
+              filters.timeFrom === preset.from && filters.timeTo === preset.to;
+            return (
+              <button
+                key={preset.label}
+                onClick={() =>
+                  onChange({ ...filters, timeFrom: preset.from, timeTo: preset.to })
+                }
+                className={clsx(
+                  "text-sm px-3 py-1.5 rounded-full border transition",
+                  active
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Custom From / To dropdowns */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <select
+              value={filters.timeFrom}
+              onChange={(e) => onChange({ ...filters, timeFrom: e.target.value })}
+              className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {slot.label}
-            </button>
-          ))}
+              <option value="">From</option>
+              {TIME_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+          </div>
+
+          <span className="text-xs text-gray-400 shrink-0">to</span>
+
+          <div className="relative flex-1">
+            <select
+              value={filters.timeTo}
+              onChange={(e) => onChange({ ...filters, timeTo: e.target.value })}
+              className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">To</option>
+              {TIME_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -311,7 +377,6 @@ export function DropInFilterPanel({
           })}
         </div>
       </div>
-
     </div>
   );
 }

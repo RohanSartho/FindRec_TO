@@ -39,7 +39,8 @@ export default function SkatingPage() {
     lng: null,
     radiusKm: "5",
     isNearMe: false,
-    timeSlot: "all",
+    timeFrom: "",
+    timeTo: "",
   });
   const [dropinResults, setDropinResults] = useState<{
     groups: any[];
@@ -98,18 +99,9 @@ export default function SkatingPage() {
       } else if (dropinFilters.district) {
         params.set("district", dropinFilters.district);
       }
-      // Time slot filter
-      const timeRanges: Record<string, { start: string; end: string } | null> = {
-        all: null,
-        morning: { start: "06:00:00", end: "12:00:00" },
-        afternoon: { start: "12:00:00", end: "17:00:00" },
-        evening: { start: "17:00:00", end: "23:59:59" },
-      };
-      const timeRange = timeRanges[dropinFilters.timeSlot];
-      if (timeRange) {
-        params.set("time_start", timeRange.start);
-        params.set("time_end", timeRange.end);
-      }
+      // Time range filter (overlap logic in API)
+      if (dropinFilters.timeFrom) params.set("time_start", dropinFilters.timeFrom + ":00");
+      if (dropinFilters.timeTo)   params.set("time_end",   dropinFilters.timeTo   + ":00");
 
       const res = await fetch(`/api/dropin-search?${params.toString()}`);
       const json = await res.json();

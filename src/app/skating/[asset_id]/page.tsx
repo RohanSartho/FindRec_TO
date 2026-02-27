@@ -17,7 +17,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
     .select(`
       *,
       locations (
-        name, address, postal_code, ward,
+        id, name, address, postal_code, ward,
         district, community_council, coordinates
       ),
       rink_live_status (
@@ -34,6 +34,9 @@ export default async function RinkDetailPage({ params }: PageProps) {
   const liveStatus = (rink.rink_live_status as any[])?.[0];
   const loc = rink.locations as any;
   const displayName = rink.public_name || rink.asset_name;
+  const torontoUrl = loc?.id
+    ? `https://www.toronto.ca/explore-enjoy/parks-recreation/places-spaces/parks-and-recreation-facilities/location/?id=${loc.id}&title=${(loc.name || displayName).replace(/\s+/g, "-")}`
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -164,15 +167,17 @@ export default async function RinkDetailPage({ params }: PageProps) {
             <ExternalLink size={13} />
             Search online
           </a>
-          <a
-            href="https://www.toronto.ca/explore-enjoy/parks-recreation/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:underline"
-          >
-            <ExternalLink size={13} />
-            toronto.ca/parks-recreation
-          </a>
+          {torontoUrl && (
+            <a
+              href={torontoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+            >
+              <ExternalLink size={13} />
+              toronto.ca official page
+            </a>
+          )}
         </div>
       </div>
 

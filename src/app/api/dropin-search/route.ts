@@ -119,8 +119,9 @@ export async function GET(req: NextRequest) {
       .order("start_time", { ascending: true });
 
     if (locationIds) query = query.in("location_id", locationIds);
-    if (timeStart) query = query.gte("start_time", timeStart);
-    if (timeEnd) query = query.lt("start_time", timeEnd);
+    // Overlap filter: session overlaps window when end_time > timeStart AND start_time < timeEnd
+    if (timeStart) query = query.gt("end_time", timeStart);
+    if (timeEnd)   query = query.lt("start_time", timeEnd);
 
     const { data: sessions, error } = await query;
     if (error) throw error;
