@@ -14,7 +14,7 @@
 
 set search_path to public, extensions;
 
--- 1. Backfill location data
+-- 1. Backfill location data (address corrected in migration 0009)
 UPDATE locations
 SET
   address           = '840 Don Mills Rd W',
