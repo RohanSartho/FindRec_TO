@@ -164,6 +164,7 @@ export type Database = {
           created_at: string | null
           district: string | null
           id: number
+          last_synced_at: string | null
           name: string
           postal_code: string | null
           raw_geometry: Json | null
@@ -178,6 +179,7 @@ export type Database = {
           created_at?: string | null
           district?: string | null
           id: number
+          last_synced_at?: string | null
           name: string
           postal_code?: string | null
           raw_geometry?: Json | null
@@ -192,6 +194,7 @@ export type Database = {
           created_at?: string | null
           district?: string | null
           id?: number
+          last_synced_at?: string | null
           name?: string
           postal_code?: string | null
           raw_geometry?: Json | null
@@ -350,6 +353,7 @@ export type Database = {
           asset_id: number | null
           asset_name: string
           created_at: string | null
+          data_source: string | null
           has_boards: boolean | null
           ice_pad_size: string | null
           id: number
@@ -368,6 +372,7 @@ export type Database = {
           asset_id?: number | null
           asset_name: string
           created_at?: string | null
+          data_source?: string | null
           has_boards?: boolean | null
           ice_pad_size?: string | null
           id?: number
@@ -386,6 +391,7 @@ export type Database = {
           asset_id?: number | null
           asset_name?: string
           created_at?: string | null
+          data_source?: string | null
           has_boards?: boolean | null
           ice_pad_size?: string | null
           id?: number
