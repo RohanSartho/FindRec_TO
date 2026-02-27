@@ -35,6 +35,38 @@ a banner on next login saying "New season schedule is now available."
 
 ## 🗺️ Discovery & UX
 
+### [UX-003] Venue Hours of Operation (Google Places)
+**Priority:** Medium
+**Context:** Users want to see a venue's hours of operation on the detail
+page (e.g. "Mon–Fri 6am–11pm"). Toronto's CKAN API and live JSON feeds
+contain no hours data — the only programmatic source is the Google Places API.
+
+**Technical approach:**
+- Add `google_place_id text` and `hours_json jsonb` columns to `locations` table (migration)
+- Create a one-time admin script (`scripts/fetch-google-hours.ts`) that:
+  1. Iterates all rink `location_ids` with a name + address
+  2. Calls Google Places **Text Search** API to resolve `place_id`
+  3. Calls Google Places **Place Details** API (`fields=opening_hours`) to get hours
+  4. Upserts `google_place_id` and `hours_json` into `locations`
+- Venue detail page (`/skating/[asset_id]`) reads `hours_json` from the already-fetched `locations` row and renders a weekday hours table
+- Fallback: if `hours_json` is null, show nothing (no empty section)
+
+**Prerequisites:**
+- Google Cloud project with **Places API (New)** enabled and billing configured
+- `GOOGLE_PLACES_API_KEY` added to `.env.local` and Vercel env vars
+
+**Cost estimate:** ~$2.30 USD for a one-time full scan of 135 rinks
+(Place Details: $17/1000 requests × 135 venues + ~135 Text Search calls)
+
+**Acceptance Criteria:**
+- [ ] Migration adds `google_place_id` + `hours_json` to `locations`
+- [ ] Fetch script resolves place_id and stores hours for ≥ 80% of indoor rinks
+- [ ] Venue detail page shows hours section when data is available
+- [ ] Outdoor rinks / pads with no Google listing are handled gracefully (section hidden)
+- [ ] `GOOGLE_PLACES_API_KEY` documented in README / env variable list
+
+**Effort:** M (migration + fetch script + UI section)
+
 ### [UX-001] Map View for Rink Discovery
 **Priority:** Medium
 **Context:** Geo search works (`locations_near` RPC). A map view would let
