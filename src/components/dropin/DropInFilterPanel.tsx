@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, MapPin, Loader2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, MapPin, Loader2, X, Filter } from "lucide-react";
 import {
   DROPIN_FILTER_OPTIONS,
   DISTRICTS,
@@ -85,7 +85,9 @@ export function DropInFilterPanel({
   const handleFromChange = (val: string) => {
     setTimeMode("range");
     setPresetKey("");
-    onChange({ ...filters, timeFrom: val });
+    // Auto-clear timeTo if it is now <= the new From (invalid range)
+    const newTo = filters.timeTo && val && filters.timeTo <= val ? "" : filters.timeTo;
+    onChange({ ...filters, timeFrom: val, timeTo: newTo });
   };
 
   const handleToChange = (val: string) => {
@@ -237,7 +239,8 @@ export function DropInFilterPanel({
                 className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">To</option>
-                {TIME_OPTIONS.map((t) => (
+                {/* Only show times strictly after the selected From */}
+                {TIME_OPTIONS.filter((t) => !filters.timeFrom || t.value > filters.timeFrom).map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
@@ -324,14 +327,43 @@ export function DropInFilterPanel({
           <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
             Program Type
           </label>
-          <div className="flex gap-2">
-            <button onClick={selectAll} className="text-sm text-blue-600 hover:underline">
-              All
-            </button>
-            <span className="text-sm text-gray-300">·</span>
-            <button onClick={clearAll} className="text-sm text-gray-400 hover:underline">
-              None
-            </button>
+
+          {/* Toggle pill (All / None) + funnel count badge */}
+          <div className="flex items-center gap-2">
+
+            {/* Segmented All/None toggle */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+              <button
+                onClick={selectAll}
+                className={clsx(
+                  "px-2.5 py-1 transition",
+                  filters.selectedPrograms.length === DROPIN_FILTER_OPTIONS.length
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                )}
+              >
+                All
+              </button>
+              <button
+                onClick={clearAll}
+                className={clsx(
+                  "px-2.5 py-1 border-l border-gray-200 transition",
+                  filters.selectedPrograms.length === 0
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                )}
+              >
+                None
+              </button>
+            </div>
+
+            {/* Funnel icon + count (0 – total chips) */}
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Filter size={12} className="text-gray-400" />
+              <span className="font-medium tabular-nums">
+                {filters.selectedPrograms.length}/{DROPIN_FILTER_OPTIONS.length}
+              </span>
+            </div>
           </div>
         </div>
 
