@@ -6,7 +6,7 @@ import { RinkListItem } from "@/components/rinks/RinkListItem";
 import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilterPanel";
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
 import { MapPin, ChevronDown, Loader2, X, LayoutGrid, List, Search } from "lucide-react";
-import { DISTRICTS, RADIUS_OPTIONS } from "@/lib/config/dropinFilters";
+import { DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS } from "@/lib/config/dropinFilters";
 import clsx from "clsx";
 
 type RinkType = "all" | "indoor" | "outdoor";
@@ -90,7 +90,12 @@ export default function SkatingPage() {
       const params = new URLSearchParams();
       params.set("date", dropinFilters.date);
       if (dropinFilters.selectedPrograms.length > 0) {
-        params.set("program_types", dropinFilters.selectedPrograms.join(","));
+        // Expand chip keys to individual course_title strings (incl. supervised + unsupervised)
+        const expanded = dropinFilters.selectedPrograms.flatMap((key) => {
+          const opt = DROPIN_FILTER_OPTIONS.find((o) => o.value === key);
+          return opt?.courseTitles ?? [];
+        });
+        if (expanded.length > 0) params.set("program_types", expanded.join(","));
       }
       if (dropinFilters.isNearMe && dropinFilters.lat && dropinFilters.lng) {
         params.set("lat", String(dropinFilters.lat));

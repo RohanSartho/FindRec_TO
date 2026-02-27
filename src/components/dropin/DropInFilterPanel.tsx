@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, MapPin, Loader2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, MapPin, Loader2, X } from "lucide-react";
 import {
   DROPIN_FILTER_OPTIONS,
   DISTRICTS,
@@ -11,7 +11,7 @@ import clsx from "clsx";
 
 export interface DropInFilters {
   date: string;
-  selectedPrograms: string[]; // course_title values
+  selectedPrograms: string[]; // chip key values (e.g. "leisure-adult")
   district: string;
   lat: number | null;
   lng: number | null;
@@ -34,13 +34,13 @@ const GROUP_LABELS = {
   special: "Special Programs",
 };
 
-// Preset chips — set both From and To at once
-const TIME_PRESETS = [
-  { label: "All Day",   from: "",      to: ""      },
-  { label: "Morning",   from: "06:00", to: "12:00" },
-  { label: "Afternoon", from: "12:00", to: "17:00" },
-  { label: "Evening",   from: "17:00", to: "23:00" },
-] as const;
+// Preset quick-select options for the Time of Day dropdown
+const PRESET_RANGES: Record<string, { from: string; to: string }> = {
+  "":          { from: "",      to: ""      },
+  morning:     { from: "06:00", to: "12:00" },
+  afternoon:   { from: "12:00", to: "17:00" },
+  evening:     { from: "17:00", to: "23:00" },
+};
 
 // 4 AM → 11 PM in 1-hour increments
 const TIME_OPTIONS = Array.from({ length: 20 }, (_, i) => {
@@ -62,6 +62,39 @@ export function DropInFilterPanel({
   loading,
 }: DropInFilterPanelProps) {
   const [geoLoading, setGeoLoading] = useState(false);
+  // "preset" = Time of Day dropdown active; "range" = From–To active
+  const [timeMode, setTimeMode] = useState<"preset" | "range">("preset");
+  const [presetKey, setPresetKey] = useState<"" | "morning" | "afternoon" | "evening">("");
+  // Collapsible groups — all expanded by default
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    leisure: true,
+    shinny: true,
+    special: true,
+  });
+
+  // ── Time handlers ──────────────────────────────────────────────────────────
+
+  const handlePresetChange = (key: string) => {
+    const k = key as "" | "morning" | "afternoon" | "evening";
+    setPresetKey(k);
+    setTimeMode("preset");
+    const range = PRESET_RANGES[k] ?? { from: "", to: "" };
+    onChange({ ...filters, timeFrom: range.from, timeTo: range.to });
+  };
+
+  const handleFromChange = (val: string) => {
+    setTimeMode("range");
+    setPresetKey("");
+    onChange({ ...filters, timeFrom: val });
+  };
+
+  const handleToChange = (val: string) => {
+    setTimeMode("range");
+    setPresetKey("");
+    onChange({ ...filters, timeTo: val });
+  };
+
+  // ── Program chip handlers ──────────────────────────────────────────────────
 
   const toggleProgram = (value: string) => {
     const selected = filters.selectedPrograms;
@@ -94,6 +127,11 @@ export function DropInFilterPanel({
       selectedPrograms: DROPIN_FILTER_OPTIONS.map((o) => o.value),
     });
 
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Location handlers ──────────────────────────────────────────────────────
+
   const handleNearMe = () => {
     if (!navigator.geolocation) return;
     setGeoLoading(true);
@@ -119,7 +157,6 @@ export function DropInFilterPanel({
     onChange({ ...filters, lat: null, lng: null, isNearMe: false });
   };
 
-  // Group options
   const groups = (["leisure", "shinny", "special"] as const).map((g) => ({
     key: g,
     label: GROUP_LABELS[g],
@@ -128,7 +165,8 @@ export function DropInFilterPanel({
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-sm p-5 space-y-5">
-      {/* Date picker */}
+
+      {/* ── Date picker ─────────────────────────────────────────────────────── */}
       <div>
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Date
@@ -141,50 +179,27 @@ export function DropInFilterPanel({
         />
       </div>
 
-      {/* Time of day */}
+      {/* ── Time filter — preset dropdown + custom range, mutually exclusive ── */}
       <div>
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Time of Day
         </label>
-
-        {/* Preset chips */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {TIME_PRESETS.map((preset) => {
-            const active =
-              filters.timeFrom === preset.from && filters.timeTo === preset.to;
-            return (
-              <button
-                key={preset.label}
-                onClick={() =>
-                  onChange({ ...filters, timeFrom: preset.from, timeTo: preset.to })
-                }
-                className={clsx(
-                  "text-sm px-3 py-1.5 rounded-full border transition",
-                  active
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-                )}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Custom From / To dropdowns */}
         <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+
+          {/* Preset dropdown — greyed when range mode is active */}
+          <div className={clsx(
+            "relative transition-opacity",
+            timeMode === "range" && "opacity-40 pointer-events-none"
+          )}>
             <select
-              value={filters.timeFrom}
-              onChange={(e) => onChange({ ...filters, timeFrom: e.target.value })}
-              className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={presetKey}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">From</option>
-              {TIME_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
+              <option value="">All day</option>
+              <option value="morning">Morning  6–12</option>
+              <option value="afternoon">Afternoon  12–5</option>
+              <option value="evening">Evening  5–11</option>
             </select>
             <ChevronDown
               size={13}
@@ -192,37 +207,50 @@ export function DropInFilterPanel({
             />
           </div>
 
-          <span className="text-xs text-gray-400 shrink-0">to</span>
+          <span className="text-xs text-gray-400 shrink-0">or</span>
 
-          <div className="relative flex-1">
-            <select
-              value={filters.timeTo}
-              onChange={(e) => onChange({ ...filters, timeTo: e.target.value })}
-              className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">To</option>
-              {TIME_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={13}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-            />
+          {/* Custom From–To — greyed when preset mode is active */}
+          <div className={clsx(
+            "flex items-center gap-1.5 transition-opacity",
+            timeMode === "preset" && "opacity-40 pointer-events-none"
+          )}>
+            <div className="relative">
+              <select
+                value={filters.timeFrom}
+                onChange={(e) => handleFromChange(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">From</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+            <span className="text-xs text-gray-400">–</span>
+            <div className="relative">
+              <select
+                value={filters.timeTo}
+                onChange={(e) => handleToChange(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">To</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Location filter */}
+      {/* ── Location filter ──────────────────────────────────────────────────── */}
       <div>
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Location
         </label>
-        {/* Near Me + District always side by side */}
         <div className="flex gap-2 items-center">
-          {/* Near Me */}
           {filters.isNearMe ? (
             <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-sm text-blue-700 shrink-0">
               <MapPin size={13} />
@@ -246,55 +274,39 @@ export function DropInFilterPanel({
             </button>
           )}
 
-          {/* District dropdown */}
           {!filters.isNearMe && (
             <div className="relative flex-1">
               <select
                 value={filters.district}
-                onChange={(e) =>
-                  onChange({ ...filters, district: e.target.value })
-                }
+                onChange={(e) => onChange({ ...filters, district: e.target.value })}
                 className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {DISTRICTS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
+                  <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
-              <ChevronDown
-                size={13}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              />
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
           )}
 
-          {/* Radius (only when near me) */}
           {filters.isNearMe && (
             <div className="relative flex-1">
               <select
                 value={filters.radiusKm}
-                onChange={(e) =>
-                  onChange({ ...filters, radiusKm: e.target.value })
-                }
+                onChange={(e) => onChange({ ...filters, radiusKm: e.target.value })}
                 className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {RADIUS_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
+                  <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
-              <ChevronDown
-                size={13}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              />
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
           )}
         </div>
       </div>
 
-      {/* Search button */}
+      {/* ── Search button ────────────────────────────────────────────────────── */}
       <button
         onClick={onSearch}
         disabled={loading}
@@ -304,74 +316,81 @@ export function DropInFilterPanel({
         {loading ? "Searching..." : "Find Drop-ins"}
       </button>
 
-      {/* Program type filter */}
+      {/* ── Program type filter ──────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
             Program Type
           </label>
           <div className="flex gap-2">
-            <button
-              onClick={selectAll}
-              className="text-sm text-blue-600 hover:underline"
-            >
+            <button onClick={selectAll} className="text-sm text-blue-600 hover:underline">
               All
             </button>
             <span className="text-sm text-gray-300">·</span>
-            <button
-              onClick={clearAll}
-              className="text-sm text-gray-400 hover:underline"
-            >
+            <button onClick={clearAll} className="text-sm text-gray-400 hover:underline">
               None
             </button>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {groups.map((group) => {
-            const allSelected = group.options.every((o) =>
-              filters.selectedPrograms.includes(o.value)
+            const groupValues = group.options.map((o) => o.value);
+            const allSelected = groupValues.every((v) =>
+              filters.selectedPrograms.includes(v)
             );
+            const isExpanded = expandedGroups[group.key] ?? true;
+
             return (
-              <div key={group.key}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-medium text-gray-700">
-                    {group.label}
-                  </span>
-                  <button
-                    onClick={() => selectAllInGroup(group.key)}
-                    className="text-sm text-blue-500 hover:underline"
-                  >
-                    {allSelected ? "Deselect all" : "Select all"}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {group.options.map((opt) => {
-                    const active = filters.selectedPrograms.includes(opt.value);
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => toggleProgram(opt.value)}
-                        className={clsx(
-                          "text-sm px-2.5 py-1 rounded-full border transition",
-                          active
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-                        )}
-                      >
-                        {opt.label}
-                        <span
+              <div key={group.key} className="border border-gray-100 rounded-xl overflow-hidden">
+                {/* Group header — bold, collapsible */}
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition"
+                >
+                  <span className="text-sm font-bold text-gray-800">{group.label}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); selectAllInGroup(group.key); }}
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      {allSelected ? "Deselect all" : "Select all"}
+                    </button>
+                    {isExpanded
+                      ? <ChevronUp size={14} className="text-gray-400 shrink-0" />
+                      : <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                    }
+                  </div>
+                </button>
+
+                {/* Chip grid — 2 columns, label + age right-aligned */}
+                {isExpanded && (
+                  <div className="p-2.5 grid grid-cols-2 gap-1.5">
+                    {group.options.map((opt) => {
+                      const active = filters.selectedPrograms.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => toggleProgram(opt.value)}
                           className={clsx(
-                            "ml-1",
-                            active ? "text-blue-200" : "text-gray-400"
+                            "flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-sm transition",
+                            active
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
                           )}
                         >
-                          {opt.ageLabel}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span className="font-medium text-left leading-tight">{opt.label}</span>
+                          <span className={clsx(
+                            "ml-2 text-xs font-semibold shrink-0",
+                            active ? "text-blue-200" : "text-gray-400"
+                          )}>
+                            {opt.ageLabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
