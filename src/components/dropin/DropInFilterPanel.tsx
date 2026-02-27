@@ -344,9 +344,12 @@ export function DropInFilterPanel({
             return (
               <div key={group.key} className="border border-gray-100 rounded-xl overflow-hidden">
                 {/* Group header — bold, collapsible */}
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleGroup(group.key)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition"
+                  onKeyDown={(e) => e.key === "Enter" && toggleGroup(group.key)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition cursor-pointer"
                 >
                   <span className="text-sm font-bold text-gray-800">{group.label}</span>
                   <div className="flex items-center gap-2">
@@ -361,7 +364,7 @@ export function DropInFilterPanel({
                       : <ChevronDown size={14} className="text-gray-400 shrink-0" />
                     }
                   </div>
-                </button>
+                </div>
 
                 {/* Chip grid — 2 columns, label + age right-aligned */}
                 {isExpanded && (
