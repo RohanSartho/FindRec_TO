@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-26 (story: Phase 10 — 12 UX improvements)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -110,13 +110,14 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 src/
 ├── components/
 │   ├── dropin/
-│   │   ├── DropInFilterPanel.tsx   # Program type chips, location, date filters
-│   │   └── DropInResultsTable.tsx  # Grouped sessions table
+│   │   ├── DropInFilterPanel.tsx   # Program type chips, location, date, time-of-day filters
+│   │   └── DropInResultsTable.tsx  # Grouped sessions table with Free badge
 │   ├── layout/
 │   │   └── Navbar.tsx              # Sticky nav, auth state, user menu
 │   ├── rinks/
-│   │   ├── RinkCard.tsx            # Card with live status badge + favourite
-│   │   └── Timetable.tsx           # Day/Week/All schedule view
+│   │   ├── RinkCard.tsx            # Card — live status, full-card link, colored type badge
+│   │   ├── RinkListItem.tsx        # Compact list row (list view mode)
+│   │   └── Timetable.tsx           # Day/Week schedule view; Free badge for outdoor rinks
 │   └── ui/
 │       ├── AuthModal.tsx           # Google OAuth + email sign in/up
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
@@ -166,6 +167,7 @@ src/
 | `pad_length_ft` null on outdoor rinks | Open | CKAN doesn't include for outdoor |
 | 2,437 facilities skipped | Open | location_id not in our locations table |
 | District filter needs 2-step query | Fixed | PostgREST can't filter parent via join |
+| Dennis R. Timbrell not showing | Open | Likely missing rink row — run: `SELECT * FROM rinks r JOIN locations l ON l.id=r.location_id WHERE l.name ILIKE '%timbrell%'` |
 | Dropin dedup wrong unique key | Fixed | Was (course_id, location_id), now (+first_date) |
 | PostGIS in extensions schema | Fixed | Add `set search_path to public, extensions` to all migrations |
 | Next.js 15 params are Promise | Fixed | Always `await params` in dynamic routes |
@@ -229,4 +231,7 @@ npx tsc --noEmit                               # Check for type errors
 | 6 | District filter fix, FavouritesContext, rink detail page, timetable |
 | Hotfix | Dropin unique key fix, re-ingest (5,130 → 29,034 rows) |
 | 7 | Drop-in search mode, DropInFilterPanel, DropInResultsTable |
+| 8 | 6 UX fixes: right-click cards, alpha sort, remove All tab, filter button position, independent scroll, Maps links |
+| 9 | 8 UX improvements: full card click, sport filter in timetable, venue font polish, remove status badge, wider drop-ins layout, bolder filter border, side-by-side location controls, table font bump |
+| 10 | 12 UX improvements: live status in grid, no unknown badge, pointer-events fix, colored type badge, grid/list toggle, name search, Near Me X + radius in grid, time-of-day filter in drop-ins, Free badge on outdoor sessions, Google Maps + web links in venue detail |
 | Next | Vercel deploy, analytics, polish |
