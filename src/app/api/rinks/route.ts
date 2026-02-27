@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const district = searchParams.get("district");
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
-  const radius = searchParams.get("radius") ?? "5000";
+  const radius = searchParams.get("radius") ?? "5000"; // metres
 
   try {
     // Geo query — use PostGIS RPC
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       const locationIds = data.map((l: any) => l.id);
       let rinkQuery = supabase
         .from("rinks")
-        .select(`*, locations(name, address, district, coordinates)`)
+        .select(`*, locations(name, address, district, coordinates), rink_live_status(status, reason, fetched_at)`)
         .in("location_id", locationIds);
 
       if (type) rinkQuery = rinkQuery.eq("rink_type", type as "indoor" | "outdoor");
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from("rinks")
-      .select(`*, locations(name, address, district, community_council, coordinates)`)
+      .select(`*, locations(name, address, district, community_council, coordinates), rink_live_status(status, reason, fetched_at)`)
       .order("asset_name");
 
     if (type) query = query.eq("rink_type", type as "indoor" | "outdoor");

@@ -53,7 +53,7 @@ function matchesSport(activityType: string, filter: SportFilter): boolean {
   return activityType?.toLowerCase().includes(filter);
 }
 
-export function Timetable({ assetId }: { assetId: number }) {
+export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: string }) {
   const [view, setView] = useState<View>("day");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [sportFilter, setSportFilter] = useState<SportFilter>("skating");
@@ -182,7 +182,7 @@ export function Timetable({ assetId }: { assetId: number }) {
                         </p>
                         <div className="space-y-2">
                           {items.map((d) => (
-                            <DropInRow key={`${d.course_id}-${date}`} dropin={d} />
+                            <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} />
                           ))}
                         </div>
                       </div>
@@ -197,7 +197,7 @@ export function Timetable({ assetId }: { assetId: number }) {
                   <EmptyState message="No drop-in sessions for this day." />
                 ) : (
                   filteredDropins.map((d) => (
-                    <DropInRow key={`${d.course_id}-${d.day_of_week}`} dropin={d} />
+                    <DropInRow key={`${d.course_id}-${d.day_of_week}`} dropin={d} isOutdoor={rinkType === "outdoor"} />
                   ))
                 )}
               </div>
@@ -243,7 +243,7 @@ export function Timetable({ assetId }: { assetId: number }) {
   );
 }
 
-function DropInRow({ dropin }: { dropin: DropIn }) {
+function DropInRow({ dropin, isOutdoor }: { dropin: DropIn; isOutdoor?: boolean }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
       <div className="flex-1 min-w-0">
@@ -254,6 +254,11 @@ function DropInRow({ dropin }: { dropin: DropIn }) {
           <span className={`text-sm px-1.5 py-0.5 rounded-full shrink-0 ${activityTypeColor(dropin.activity_type)}`}>
             {dropin.activity_type}
           </span>
+          {isOutdoor && (
+            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
+              Free
+            </span>
+          )}
         </div>
         <p className="text-sm text-gray-600 mt-0.5">
           {formatAgeRange(dropin.min_age_months, dropin.max_age_months)}

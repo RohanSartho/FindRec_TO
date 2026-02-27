@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Building2, TreePine, Users, Ruler } from "lucide-react";
+import { ArrowLeft, MapPin, Building2, TreePine, Users, Ruler, ExternalLink } from "lucide-react";
 import { Timetable } from "@/components/rinks/Timetable";
 
 interface PageProps {
@@ -83,7 +83,14 @@ export default async function RinkDetailPage({ params }: PageProps) {
             <div className="flex items-start gap-2 text-gray-700">
               <MapPin size={15} className="mt-0.5 shrink-0 text-gray-500" />
               <div>
-                <p>{loc.address}</p>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(loc.address + ", Toronto, ON")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600 hover:underline transition"
+                >
+                  {loc.address}
+                </a>
                 {loc.postal_code && (
                   <p className="text-gray-500 text-sm">{loc.postal_code}</p>
                 )}
@@ -135,26 +142,44 @@ export default async function RinkDetailPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Fee note */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <p className="text-sm text-gray-500">
-            For fee information and program registration visit{" "}
+        {/* Links */}
+        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4">
+          {loc?.address && (
             <a
-              href="https://www.toronto.ca/explore-enjoy/parks-recreation/"
+              href={`https://maps.google.com/?q=${encodeURIComponent(loc.address + ", Toronto, ON")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
             >
-              toronto.ca/parks-recreation
+              <MapPin size={13} />
+              Get Directions
             </a>
-          </p>
+          )}
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(displayName + " Toronto Parks Recreation")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+          >
+            <ExternalLink size={13} />
+            Search online
+          </a>
+          <a
+            href="https://www.toronto.ca/explore-enjoy/parks-recreation/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:underline"
+          >
+            <ExternalLink size={13} />
+            toronto.ca/parks-recreation
+          </a>
         </div>
       </div>
 
       {/* Timetable */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Schedule</h2>
-        <Timetable assetId={parseInt(asset_id)} />
+        <Timetable assetId={parseInt(asset_id)} rinkType={rink.rink_type} />
       </div>
     </div>
   );

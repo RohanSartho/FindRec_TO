@@ -57,6 +57,8 @@ export async function GET(req: NextRequest) {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
   const radiusKm = parseFloat(searchParams.get("radius_km") ?? "5");
+  const timeStart = searchParams.get("time_start"); // e.g. "12:00:00"
+  const timeEnd = searchParams.get("time_end");     // e.g. "17:00:00"
 
   // Resolve which course titles to filter on
   const activeTitles = programTypesParam
@@ -107,7 +109,8 @@ export async function GET(req: NextRequest) {
           address,
           district,
           rinks (
-            asset_id
+            asset_id,
+            rink_type
           )
         )
       `)
@@ -115,9 +118,9 @@ export async function GET(req: NextRequest) {
       .in("course_title", activeTitles)
       .order("start_time", { ascending: true });
 
-    if (locationIds) {
-      query = query.in("location_id", locationIds);
-    }
+    if (locationIds) query = query.in("location_id", locationIds);
+    if (timeStart) query = query.gte("start_time", timeStart);
+    if (timeEnd) query = query.lt("start_time", timeEnd);
 
     const { data: sessions, error } = await query;
     if (error) throw error;

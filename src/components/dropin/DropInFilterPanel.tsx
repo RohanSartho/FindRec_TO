@@ -17,6 +17,7 @@ export interface DropInFilters {
   lng: number | null;
   radiusKm: string;
   isNearMe: boolean;
+  timeSlot: "all" | "morning" | "afternoon" | "evening";
 }
 
 interface DropInFilterPanelProps {
@@ -31,6 +32,13 @@ const GROUP_LABELS = {
   shinny: "Shinny / Hockey",
   special: "Special Programs",
 };
+
+const TIME_SLOTS = [
+  { value: "all", label: "All Day" },
+  { value: "morning", label: "Morning", sub: "before noon" },
+  { value: "afternoon", label: "Afternoon", sub: "12–5 pm" },
+  { value: "evening", label: "Evening", sub: "after 5 pm" },
+] as const;
 
 export function DropInFilterPanel({
   filters,
@@ -116,6 +124,29 @@ export function DropInFilterPanel({
           onChange={(e) => onChange({ ...filters, date: e.target.value })}
           className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+
+      {/* Time of day */}
+      <div>
+        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
+          Time of Day
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {TIME_SLOTS.map((slot) => (
+            <button
+              key={slot.value}
+              onClick={() => onChange({ ...filters, timeSlot: slot.value })}
+              className={clsx(
+                "text-sm px-3 py-1.5 rounded-full border transition",
+                filters.timeSlot === slot.value
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+              )}
+            >
+              {slot.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Location filter */}

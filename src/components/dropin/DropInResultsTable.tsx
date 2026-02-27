@@ -17,7 +17,7 @@ interface Session {
     name: string;
     address: string | null;
     district: string | null;
-    rinks?: Array<{ asset_id: number }>;
+    rinks?: Array<{ asset_id: number; rink_type?: string }>;
   } | null;
 }
 
@@ -160,18 +160,25 @@ export function DropInResultsTable({
                         className="hover:bg-blue-50/30 transition"
                       >
                         <td className="px-5 py-3">
-                          {session.locations?.rinks?.[0]?.asset_id ? (
-                            <Link
-                              href={`/skating/${session.locations.rinks[0].asset_id}`}
-                              className="font-medium text-gray-900 hover:text-blue-600 transition"
-                            >
-                              {session.locations?.name ?? "Unknown"}
-                            </Link>
-                          ) : (
-                            <span className="font-medium text-gray-900">
-                              {session.locations?.name ?? "Unknown"}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {session.locations?.rinks?.[0]?.asset_id ? (
+                              <Link
+                                href={`/skating/${session.locations.rinks[0].asset_id}`}
+                                className="font-medium text-gray-900 hover:text-blue-600 transition"
+                              >
+                                {session.locations?.name ?? "Unknown"}
+                              </Link>
+                            ) : (
+                              <span className="font-medium text-gray-900">
+                                {session.locations?.name ?? "Unknown"}
+                              </span>
+                            )}
+                            {session.locations?.rinks?.[0]?.rink_type === "outdoor" && (
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                                Free
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
                           <div className="flex items-center gap-1 text-xs">
