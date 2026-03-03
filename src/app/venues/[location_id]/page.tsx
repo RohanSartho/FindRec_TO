@@ -26,7 +26,7 @@ export default async function VenueDetailPage({ params }: PageProps) {
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Back button */}
       <Link
-        href="/skating"
+        href="/activities"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-6 transition"
       >
         <ArrowLeft size={16} />

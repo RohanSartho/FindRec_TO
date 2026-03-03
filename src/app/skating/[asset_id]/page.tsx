@@ -42,11 +42,11 @@ export default async function RinkDetailPage({ params }: PageProps) {
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Back button */}
       <Link
-        href="/skating"
+        href="/activities"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-6 transition"
       >
         <ArrowLeft size={16} />
-        Back to rinks
+        Back to venues
       </Link>
 
       {/* Header */}
@@ -54,7 +54,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             {rink.rink_type === "indoor" ? (
-              <Building2 size={16} className="text-blue-500" />
+              <Building2 size={16} className="text-brand" />
             ) : (
               <TreePine size={16} className="text-green-500" />
             )}
@@ -62,7 +62,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
               {rink.rink_type} rink
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+          <h1 className="text-2xl font-bold leading-tight" style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}>
             {displayName}
           </h1>
           {loc?.name && loc.name !== displayName && (
@@ -90,7 +90,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
                   href={`https://maps.google.com/?q=${encodeURIComponent(loc.address + ", Toronto, ON")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-blue-600 hover:underline transition"
+                  className="hover:text-brand hover:underline transition"
                 >
                   {loc.address}
                 </a>
@@ -152,7 +152,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
               href={`https://maps.google.com/?q=${encodeURIComponent(loc.address + ", Toronto, ON")}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+              className="flex items-center gap-1.5 text-sm text-brand hover:underline"
             >
               <MapPin size={13} />
               Get Directions
@@ -162,7 +162,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
             href={`https://www.google.com/search?q=${encodeURIComponent(displayName + " Toronto Parks Recreation")}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+            className="flex items-center gap-1.5 text-sm text-brand hover:underline"
           >
             <ExternalLink size={13} />
             Search online
@@ -172,7 +172,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
               href={torontoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"
+              className="flex items-center gap-1.5 text-sm text-brand hover:underline"
             >
               <ExternalLink size={13} />
               toronto.ca official page
@@ -183,7 +183,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
 
       {/* Timetable */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Schedule</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}>Schedule</h2>
         <Timetable assetId={parseInt(asset_id)} rinkType={rink.rink_type} />
       </div>
     </div>

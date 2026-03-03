@@ -11,6 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 // Returns locations enriched with:
 //   activity_types: string[]      — activities available at this location
 //   rink: { asset_id, rink_type } — present only if location has a skating rink
+//
+// Activity filter strategy:
+//   "skating"  → from rinks table (authoritative, works offline)
+//   all others → from dropins + programs tables (reflects actual scheduled activities)
+//   no filter  → from facilities + rinks (broad overview)
 
 async function fetchAllFacilities(
   supabase: Awaited<ReturnType<typeof createClient>>
@@ -35,11 +40,42 @@ async function fetchAllFacilities(
   return results;
 }
 
+/** Get distinct location_ids that have sessions for a given activity_type. */
+async function locationIdsForActivity(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  activityType: string
+): Promise<Set<number>> {
+  const ids = new Set<number>();
+
+  type ActivityTypeEnum = "skating" | "fitness" | "aquatics" | "arts" | "sports" | "other";
+  const enumVal = activityType as ActivityTypeEnum;
+
+  const [dropinRes, programRes] = await Promise.all([
+    supabase
+      .from("dropins")
+      .select("location_id")
+      .eq("activity_type", enumVal)
+      .not("location_id", "is", null)
+      .limit(5000),
+    supabase
+      .from("programs")
+      .select("location_id")
+      .eq("activity_type", enumVal)
+      .not("location_id", "is", null)
+      .limit(5000),
+  ]);
+
+  for (const r of dropinRes.data ?? [])  if (r.location_id) ids.add(r.location_id);
+  for (const r of programRes.data ?? []) if (r.location_id) ids.add(r.location_id);
+
+  return ids;
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { searchParams } = req.nextUrl;
 
-  const activityType = searchParams.get("activity_type"); // e.g. "skating"
+  const activityType = searchParams.get("activity_type"); // e.g. "fitness"
   const rinkType = searchParams.get("rink_type");         // "indoor" | "outdoor"
   const district = searchParams.get("district");
   const lat = searchParams.get("lat");
@@ -47,15 +83,7 @@ export async function GET(req: NextRequest) {
   const radius = searchParams.get("radius") ?? "5000";    // metres
 
   try {
-    // ── Build activity-type map from facilities ──────────────────────────────
-    const facilityRows = await fetchAllFacilities(supabase);
-    const activityMap = new Map<number, Set<string>>();
-    for (const f of facilityRows) {
-      if (!activityMap.has(f.location_id)) activityMap.set(f.location_id, new Set());
-      activityMap.get(f.location_id)!.add(f.activity_type);
-    }
-
-    // ── Fetch rinks to enrich with skating + type info ───────────────────────
+    // ── Always fetch rinks (needed for rink info + skating filter) ────────────
     const { data: rinkRows } = await supabase
       .from("rinks")
       .select("location_id, asset_id, rink_type");
@@ -64,28 +92,53 @@ export async function GET(req: NextRequest) {
     for (const r of (rinkRows ?? []) as Array<{ location_id: number | null; asset_id: number | null; rink_type: string }>) {
       if (r.location_id && r.asset_id) {
         rinkMap.set(r.location_id, { asset_id: r.asset_id, rink_type: r.rink_type });
-        // Ensure "skating" appears in activityMap for every rink location
-        if (!activityMap.has(r.location_id)) activityMap.set(r.location_id, new Set());
-        activityMap.get(r.location_id)!.add("skating");
       }
     }
 
     // ── Resolve candidate location IDs based on activity filter ──────────────
     let locationIds: number[];
+    // activityMap is used to show chips on each card; built differently per path
+    const activityMap = new Map<number, Set<string>>();
 
-    if (activityType) {
-      let candidates = Array.from(activityMap.entries())
-        .filter(([, types]) => types.has(activityType))
-        .map(([id]) => id);
+    if (activityType === "skating") {
+      // ── Skating: authoritative source is the rinks table ──────────────────
+      let candidates = Array.from(rinkMap.keys());
 
-      // Rink-type sub-filter only applies to skating
-      if (rinkType && activityType === "skating") {
+      if (rinkType) {
         candidates = candidates.filter((id) => rinkMap.get(id)?.rink_type === rinkType);
       }
 
       locationIds = candidates;
+      // Seed activityMap so chips render
+      for (const id of locationIds) {
+        activityMap.set(id, new Set(["skating"]));
+      }
+
+    } else if (activityType) {
+      // ── Other activities: use dropins + programs (reflects real schedules) ──
+      const ids = await locationIdsForActivity(supabase, activityType);
+      locationIds = Array.from(ids);
+
+      // Seed activityMap so chips render; also add "skating" for rink venues
+      for (const id of locationIds) {
+        const types = new Set([activityType]);
+        if (rinkMap.has(id)) types.add("skating");
+        activityMap.set(id, types);
+      }
+
     } else {
-      // No activity filter — all locations with any known activity
+      // ── No filter: broad overview from facilities + rinks ─────────────────
+      const facilityRows = await fetchAllFacilities(supabase);
+      for (const f of facilityRows) {
+        if (!activityMap.has(f.location_id)) activityMap.set(f.location_id, new Set());
+        activityMap.get(f.location_id)!.add(f.activity_type);
+      }
+      // Supplement with rinks
+      for (const [locId] of rinkMap) {
+        if (!activityMap.has(locId)) activityMap.set(locId, new Set());
+        activityMap.get(locId)!.add("skating");
+      }
+
       locationIds = Array.from(activityMap.keys());
     }
 
