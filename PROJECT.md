@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-02-26 (story: Phase 10 — 12 UX improvements)
+> Last updated: 2026-03-03 (story: Phase 12 — venues browser, activity filter, conditional indoor/outdoor)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -84,6 +84,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/rinks/[id]` | GET | Single rink with location + live status |
 | `/api/rinks/[id]/status` | GET | Live status only (lightweight polling) |
 | `/api/rinks/[id]/programs` | GET | Timetable — dropins + programs by view/date |
+| `/api/venues` | GET | All venues enriched with activity_types + rink info; filters: activity_type, rink_type, district, geo |
+| `/api/locations/[id]/programs` | GET | Timetable by location_id (for non-rink venues) |
 | `/api/dropin-search` | GET | Drop-in sessions — filters: date, program_types, district, geo |
 | `/api/programs` | GET | Programs — filters: location_id, activity_type, date |
 | `/api/districts` | GET | Distinct districts for filter UI |
@@ -97,9 +99,10 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | Route | Type | Purpose |
 |---|---|---|
 | `/` | Server | Home — hero + CTA |
-| `/skating` | Client | Rink grid + Drop-ins Today mode |
+| `/skating` | Client | Venues browser (all activities) + Drop-ins Today mode |
 | `/skating/[asset_id]` | Server | Rink detail — info + timetable |
-| `/favourites` | Client | Auth-gated saved rinks |
+| `/venues/[location_id]` | Server | Non-rink venue detail — info + schedule |
+| `/favourites` | Client | Auth-gated saved locations |
 | `/auth/callback` | Route Handler | Supabase OAuth callback |
 | `/auth/error` | Server | Auth error fallback |
 
@@ -117,13 +120,15 @@ src/
 │   ├── rinks/
 │   │   ├── RinkCard.tsx            # Card — live status, full-card link, colored type badge
 │   │   ├── RinkListItem.tsx        # Compact list row (list view mode)
-│   │   └── Timetable.tsx           # Day/Week schedule view; Free badge for outdoor rinks
+│   │   └── Timetable.tsx           # Day/Week schedule view; accepts assetId OR locationId
+│   ├── venues/
+│   │   └── VenueCard.tsx           # Generic venue card — activity chips, rink badge, favourite
 │   └── ui/
 │       ├── AuthModal.tsx           # Google OAuth + email sign in/up
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
 ├── lib/
 │   ├── config/
-│   │   └── dropinFilters.ts        # Program filter options + districts + radius
+│   │   └── dropinFilters.ts        # Program filter options + districts + radius + ACTIVITY_FILTER_OPTIONS
 │   ├── context/
 │   │   └── FavouritesContext.tsx   # Single fetch, optimistic toggle, shared state
 │   ├── hooks/
@@ -134,7 +139,7 @@ src/
 │   │   ├── server.ts               # Server Supabase client (App Router)
 │   │   └── types.ts                # Generated DB types
 │   └── utils/
-│       └── timetable.ts            # formatTime, formatAgeRange, compactTitle
+│       └── timetable.ts            # formatTime, formatAgeRange, compactTitle, activityTypeColor
 └── middleware.ts                   # Session refresh + /api/favourites auth guard
 ```
 
@@ -234,4 +239,6 @@ npx tsc --noEmit                               # Check for type errors
 | 8 | 6 UX fixes: right-click cards, alpha sort, remove All tab, filter button position, independent scroll, Maps links |
 | 9 | 8 UX improvements: full card click, sport filter in timetable, venue font polish, remove status badge, wider drop-ins layout, bolder filter border, side-by-side location controls, table font bump |
 | 10 | 12 UX improvements: live status in grid, no unknown badge, pointer-events fix, colored type badge, grid/list toggle, name search, Near Me X + radius in grid, time-of-day filter in drop-ins, Free badge on outdoor sessions, Google Maps + web links in venue detail |
+| 11 | Custom time range filter (preset chips + From/To dropdowns, overlap logic), Toronto.ca official venue page links, Dennis R. Timbrell address + coords + indoor type corrections |
+| 12 | Venues browser redesign — /skating page now shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
 | Next | Vercel deploy, analytics, polish |

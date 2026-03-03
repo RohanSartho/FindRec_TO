@@ -1,28 +1,36 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { RinkCard } from "@/components/rinks/RinkCard";
-import { RinkListItem } from "@/components/rinks/RinkListItem";
+import { VenueCard, Venue } from "@/components/venues/VenueCard";
 import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilterPanel";
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
-import { MapPin, ChevronDown, Loader2, X, LayoutGrid, List, Search } from "lucide-react";
-import { DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS } from "@/lib/config/dropinFilters";
+import {
+  MapPin, ChevronDown, ChevronUp, Loader2,
+  X, LayoutGrid, List, Search, Filter,
+} from "lucide-react";
+import {
+  DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS, ACTIVITY_FILTER_OPTIONS,
+} from "@/lib/config/dropinFilters";
 import clsx from "clsx";
 
-type RinkType = "all" | "indoor" | "outdoor";
-type PageMode = "rinks" | "dropins";
+type PageMode = "venues" | "dropins";
 type ViewStyle = "grid" | "list";
+type RinkTypeFilter = "" | "indoor" | "outdoor";
 
-export default function SkatingPage() {
-  const [mode, setMode] = useState<PageMode>("rinks");
+// Activities that expose the Indoor / Outdoor sub-filter
+const RINK_FILTER_ACTIVITIES = ["skating"];
 
-  // Rink finder state
-  const [rinks, setRinks] = useState<any[]>([]);
+export default function VenuesPage() {
+  const [mode, setMode] = useState<PageMode>("venues");
+
+  // ── Venue finder state ────────────────────────────────────────────────────
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [geoLoading, setGeoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState("");
-  const [rinkType, setRinkType] = useState<RinkType>("all");
+  const [activityFilter, setActivityFilter] = useState("");
+  const [rinkTypeFilter, setRinkTypeFilter] = useState<RinkTypeFilter>("");
   const [isNearMe, setIsNearMe] = useState(false);
   const [nearMeLat, setNearMeLat] = useState<number | null>(null);
   const [nearMeLng, setNearMeLng] = useState<number | null>(null);
@@ -30,7 +38,7 @@ export default function SkatingPage() {
   const [viewStyle, setViewStyle] = useState<ViewStyle>("grid");
   const [nameSearch, setNameSearch] = useState("");
 
-  // Drop-in state
+  // ── Drop-in state (unchanged from previous design) ────────────────────────
   const [dropinFilters, setDropinFilters] = useState<DropInFilters>({
     date: new Date().toISOString().split("T")[0],
     selectedPrograms: [],
@@ -48,49 +56,72 @@ export default function SkatingPage() {
     date: string;
   } | null>(null);
   const [dropinLoading, setDropinLoading] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  const fetchRinks = useCallback(async (options?: {
+  // ── fetchVenues ───────────────────────────────────────────────────────────
+  const fetchVenues = useCallback(async (options?: {
     lat?: number;
     lng?: number;
     district?: string;
-    type?: string;
+    activityType?: string;
+    rinkType?: string;
     radius?: number;
   }) => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (options?.lat) params.set("lat", String(options.lat));
-      if (options?.lng) params.set("lng", String(options.lng));
-      if (options?.lat) params.set("radius", String(options?.radius ?? 5000));
-      if (options?.district) params.set("district", options.district);
-      if (options?.type && options.type !== "all") params.set("type", options.type);
+      if (options?.lat)          params.set("lat",           String(options.lat));
+      if (options?.lng)          params.set("lng",           String(options.lng));
+      if (options?.lat)          params.set("radius",        String(options?.radius ?? 5000));
+      if (options?.district)     params.set("district",      options.district);
+      if (options?.activityType) params.set("activity_type", options.activityType);
+      if (options?.rinkType)     params.set("rink_type",     options.rinkType);
 
-      const res = await fetch(`/api/rinks?${params.toString()}`);
+      const res = await fetch(`/api/venues?${params.toString()}`);
       const json = await res.json();
-      setRinks(json.data ?? []);
+      setVenues(json.data ?? []);
     } catch {
-      setError("Failed to load rinks. Please try again.");
+      setError("Failed to load venues. Please try again.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch on type/district changes (near me handled explicitly in handlers)
+  // Re-fetch whenever filters change
   useEffect(() => {
-    if (!isNearMe) {
-      fetchRinks({ type: rinkType, district });
+    if (mode !== "venues") return;
+    if (isNearMe && nearMeLat && nearMeLng) {
+      fetchVenues({
+        lat: nearMeLat,
+        lng: nearMeLng,
+        activityType: activityFilter || undefined,
+        rinkType: rinkTypeFilter || undefined,
+        radius: parseInt(nearMeRadius) * 1000,
+      });
+    } else if (!isNearMe) {
+      fetchVenues({
+        district: district || undefined,
+        activityType: activityFilter || undefined,
+        rinkType: rinkTypeFilter || undefined,
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rinkType, district, fetchRinks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityFilter, rinkTypeFilter, district, isNearMe, nearMeLat, nearMeLng, nearMeRadius, fetchVenues]);
 
+  // ── Activity filter handler — reset rink-type sub-filter on change ─────────
+  const handleActivityChange = (value: string) => {
+    setActivityFilter(value);
+    setRinkTypeFilter(""); // rink-type only applies per activity
+  };
+
+  // ── Drop-in search ────────────────────────────────────────────────────────
   const searchDropins = useCallback(async () => {
     setDropinLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("date", dropinFilters.date);
       if (dropinFilters.selectedPrograms.length > 0) {
-        // Expand chip keys to individual course_title strings (incl. supervised + unsupervised)
         const expanded = dropinFilters.selectedPrograms.flatMap((key) => {
           const opt = DROPIN_FILTER_OPTIONS.find((o) => o.value === key);
           return opt?.courseTitles ?? [];
@@ -98,13 +129,12 @@ export default function SkatingPage() {
         if (expanded.length > 0) params.set("program_types", expanded.join(","));
       }
       if (dropinFilters.isNearMe && dropinFilters.lat && dropinFilters.lng) {
-        params.set("lat", String(dropinFilters.lat));
-        params.set("lng", String(dropinFilters.lng));
+        params.set("lat",       String(dropinFilters.lat));
+        params.set("lng",       String(dropinFilters.lng));
         params.set("radius_km", dropinFilters.radiusKm);
       } else if (dropinFilters.district) {
         params.set("district", dropinFilters.district);
       }
-      // Time range filter (overlap logic in API)
       if (dropinFilters.timeFrom) params.set("time_start", dropinFilters.timeFrom + ":00");
       if (dropinFilters.timeTo)   params.set("time_end",   dropinFilters.timeTo   + ":00");
 
@@ -116,6 +146,7 @@ export default function SkatingPage() {
     }
   }, [dropinFilters]);
 
+  // ── Geo handlers ──────────────────────────────────────────────────────────
   const handleNearMe = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -131,7 +162,12 @@ export default function SkatingPage() {
         setNearMeLng(lng);
         setDistrict("");
         setGeoLoading(false);
-        fetchRinks({ lat, lng, type: rinkType, radius: parseInt(nearMeRadius) * 1000 });
+        fetchVenues({
+          lat, lng,
+          activityType: activityFilter || undefined,
+          rinkType:     rinkTypeFilter || undefined,
+          radius: parseInt(nearMeRadius) * 1000,
+        });
       },
       () => {
         alert("Unable to get your location. Please check your browser permissions.");
@@ -144,13 +180,22 @@ export default function SkatingPage() {
     setIsNearMe(false);
     setNearMeLat(null);
     setNearMeLng(null);
-    fetchRinks({ type: rinkType, district });
+    fetchVenues({
+      district:     district     || undefined,
+      activityType: activityFilter || undefined,
+      rinkType:     rinkTypeFilter || undefined,
+    });
   };
 
   const handleRadiusChange = (radius: string) => {
     setNearMeRadius(radius);
     if (nearMeLat && nearMeLng) {
-      fetchRinks({ lat: nearMeLat, lng: nearMeLng, type: rinkType, radius: parseInt(radius) * 1000 });
+      fetchVenues({
+        lat: nearMeLat, lng: nearMeLng,
+        activityType: activityFilter || undefined,
+        rinkType:     rinkTypeFilter || undefined,
+        radius: parseInt(radius) * 1000,
+      });
     }
   };
 
@@ -161,37 +206,39 @@ export default function SkatingPage() {
     setDistrict(value);
   };
 
-  // Client-side name filter + sort
-  const sortedRinks = (isNearMe
-    ? rinks
-    : [...rinks].sort((a, b) => {
-        const nameA = (a.public_name || a.asset_name || "").toLowerCase();
-        const nameB = (b.public_name || b.asset_name || "").toLowerCase();
-        return nameA.localeCompare(nameB);
-      })
-  ).filter((r) =>
-    !nameSearch || (r.public_name || r.asset_name || "").toLowerCase().includes(nameSearch.toLowerCase())
+  // Client-side name search (results are already sorted alphabetically by the API)
+  const filteredVenues = venues.filter((v) =>
+    !nameSearch || v.name.toLowerCase().includes(nameSearch.toLowerCase())
   );
+
+  const showRinkTypeFilter = RINK_FILTER_ACTIVITIES.includes(activityFilter);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Skating in Toronto</h1>
+        <h1
+          className="text-3xl font-bold mb-4"
+          style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}
+        >
+          Venues in Toronto
+        </h1>
+
         {/* Mode toggle */}
         <div className="flex bg-gray-100 rounded-xl overflow-hidden w-fit">
           <button
-            onClick={() => setMode("rinks")}
+            onClick={() => setMode("venues")}
             className={`px-5 py-2.5 text-sm font-medium transition ${
-              mode === "rinks" ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-200"
+              mode === "venues" ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
             }`}
           >
-            Find Rinks
+            Find Venues
           </button>
           <button
             onClick={() => setMode("dropins")}
             className={`px-5 py-2.5 text-sm font-medium transition ${
-              mode === "dropins" ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-200"
+              mode === "dropins" ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
             }`}
           >
             Drop-ins Today
@@ -199,19 +246,20 @@ export default function SkatingPage() {
         </div>
       </div>
 
-      {mode === "rinks" ? (
+      {mode === "venues" ? (
         <>
-          {/* Filters row */}
+          {/* ── Filters row ─────────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-3 mb-8 items-center">
-            {/* Near Me: active state with X + radius; inactive state with button */}
+
+            {/* Near Me */}
             {isNearMe ? (
               <>
-                <div className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-xl text-sm font-medium">
+                <div className="flex items-center gap-1.5 bg-brand text-white px-3 py-2 rounded-xl text-sm font-medium">
                   <MapPin size={14} />
                   <span>Near Me</span>
                   <button
                     onClick={clearNearMe}
-                    className="ml-1 hover:text-blue-200 transition"
+                    className="ml-1 hover:text-white/70 transition"
                     aria-label="Clear Near Me"
                   >
                     <X size={13} />
@@ -221,7 +269,7 @@ export default function SkatingPage() {
                   <select
                     value={nearMeRadius}
                     onChange={(e) => handleRadiusChange(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
                   >
                     {RADIUS_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>{r.label}</option>
@@ -235,17 +283,18 @@ export default function SkatingPage() {
                 <button
                   onClick={handleNearMe}
                   disabled={geoLoading}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition bg-white text-gray-700 border-gray-200 hover:border-brand hover:text-brand"
                 >
                   {geoLoading ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
                   Near Me
                 </button>
 
+                {/* District dropdown */}
                 <div className="relative">
                   <select
                     value={district}
                     onChange={(e) => handleDistrictChange(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
                   >
                     {DISTRICTS.map((d) => (
                       <option key={d.value} value={d.value}>{d.label}</option>
@@ -256,20 +305,35 @@ export default function SkatingPage() {
               </>
             )}
 
-            {/* Rink type toggle */}
-            <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden">
-              {(["all", "indoor", "outdoor"] as RinkType[]).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setRinkType(type)}
-                  className={`px-4 py-2 text-sm font-medium capitalize transition ${
-                    rinkType === type ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
+            {/* Activities dropdown */}
+            <div className="relative">
+              <select
+                value={activityFilter}
+                onChange={(e) => handleActivityChange(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+              >
+                {ACTIVITY_FILTER_OPTIONS.map((a) => (
+                  <option key={a.value} value={a.value}>{a.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+
+            {/* Indoor / Outdoor dropdown — only visible when skating is selected */}
+            {showRinkTypeFilter && (
+              <div className="relative">
+                <select
+                  value={rinkTypeFilter}
+                  onChange={(e) => setRinkTypeFilter(e.target.value as RinkTypeFilter)}
+                  className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+                >
+                  <option value="">All Rinks</option>
+                  <option value="indoor">Indoor</option>
+                  <option value="outdoor">Outdoor</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            )}
 
             {/* Name search */}
             <div className="relative">
@@ -279,7 +343,7 @@ export default function SkatingPage() {
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
                 placeholder="Search by name…"
-                className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+                className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand w-44"
               />
             </div>
 
@@ -287,14 +351,14 @@ export default function SkatingPage() {
             <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden ml-auto">
               <button
                 onClick={() => setViewStyle("grid")}
-                className={clsx("p-2 transition", viewStyle === "grid" ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50")}
+                className={clsx("p-2 transition", viewStyle === "grid" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
                 aria-label="Grid view"
               >
                 <LayoutGrid size={16} />
               </button>
               <button
                 onClick={() => setViewStyle("list")}
-                className={clsx("p-2 transition", viewStyle === "list" ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50")}
+                className={clsx("p-2 transition", viewStyle === "list" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
                 aria-label="List view"
               >
                 <List size={16} />
@@ -302,52 +366,65 @@ export default function SkatingPage() {
             </div>
           </div>
 
-          {/* Rink grid or list */}
+          {/* ── Venue grid / list ──────────────────────────────────────── */}
           {loading ? (
             <div className="flex items-center justify-center py-24">
-              <Loader2 size={32} className="animate-spin text-blue-500" />
+              <Loader2 size={32} className="animate-spin text-brand" />
             </div>
           ) : error ? (
             <div className="text-center py-24 text-red-500">{error}</div>
-          ) : sortedRinks.length === 0 ? (
+          ) : filteredVenues.length === 0 ? (
             <div className="text-center py-24 text-gray-400">
-              <p className="text-lg font-medium mb-1">No rinks found</p>
+              <p className="text-lg font-medium mb-1">No venues found</p>
               <p className="text-sm">Try adjusting your filters or expanding your search area.</p>
             </div>
           ) : viewStyle === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {sortedRinks.map((rink) => (
-                <RinkCard key={rink.asset_id} rink={rink} />
+              {filteredVenues.map((venue) => (
+                <VenueCard key={venue.id} venue={venue} />
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
-              {sortedRinks.map((rink) => (
-                <RinkListItem key={rink.asset_id} rink={rink} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {filteredVenues.map((venue) => (
+                <VenueCard key={venue.id} venue={venue} />
               ))}
             </div>
           )}
         </>
       ) : (
-        /* Drop-ins Today mode */
+        /* ── Drop-ins Today mode (unchanged) ──────────────────────────── */
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
-          <div className="lg:sticky lg:top-20 lg:overflow-y-auto lg:max-h-[calc(100vh-5rem)]">
-            <DropInFilterPanel
-              filters={dropinFilters}
-              onChange={setDropinFilters}
-              onSearch={searchDropins}
-              loading={dropinLoading}
-            />
+
+          {/* Left: filter panel */}
+          <div className="lg:sticky lg:top-20 lg:overflow-y-auto lg:max-h-[calc(100vh-9rem)]">
+            <button
+              onClick={() => setMobileFilterOpen((o) => !o)}
+              className="lg:hidden w-full flex items-center justify-between px-4 py-3 mb-3 bg-brand text-white rounded-xl font-medium text-sm"
+            >
+              <span className="flex items-center gap-2">
+                <Filter size={15} />
+                Filters
+              </span>
+              {mobileFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            <div className={clsx("lg:block", mobileFilterOpen ? "block" : "hidden")}>
+              <DropInFilterPanel
+                filters={dropinFilters}
+                onChange={setDropinFilters}
+                onSearch={searchDropins}
+                loading={dropinLoading}
+              />
+            </div>
           </div>
+
+          {/* Right: results */}
           <div>
             {dropinResults === null ? (
               <div className="text-center py-24 text-gray-400">
-                <p className="text-lg font-medium mb-1">
-                  Find drop-in skating sessions
-                </p>
-                <p className="text-sm">
-                  Choose your filters and tap &ldquo;Find Drop-ins&rdquo; to see what&apos;s on.
-                </p>
+                <p className="text-lg font-medium mb-1">Find drop-in skating sessions</p>
+                <p className="text-sm">Choose your filters and tap &ldquo;Find Drop-ins&rdquo; to see what&apos;s on.</p>
               </div>
             ) : (
               <DropInResultsTable

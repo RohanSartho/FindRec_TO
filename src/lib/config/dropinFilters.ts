@@ -156,3 +156,12 @@ export const RADIUS_OPTIONS = [
   { value: "5", label: "Within 5 km" },
   { value: "10", label: "Within 10 km" },
 ];
+
+export const ACTIVITY_FILTER_OPTIONS = [
+  { value: "", label: "All Activities" },
+  { value: "skating", label: "Skating" },
+  { value: "fitness", label: "Fitness" },
+  { value: "aquatics", label: "Aquatics" },
+  { value: "arts", label: "Arts" },
+  { value: "sports", label: "Sports" },
+];

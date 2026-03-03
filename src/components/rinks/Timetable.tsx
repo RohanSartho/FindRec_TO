@@ -53,10 +53,20 @@ function matchesSport(activityType: string, filter: SportFilter): boolean {
   return activityType?.toLowerCase().includes(filter);
 }
 
-export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: string }) {
+export function Timetable({
+  assetId,
+  locationId,
+  rinkType,
+  defaultSportFilter = "skating",
+}: {
+  assetId?: number;
+  locationId?: number;
+  rinkType?: string;
+  defaultSportFilter?: SportFilter;
+}) {
   const [view, setView] = useState<View>("day");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
-  const [sportFilter, setSportFilter] = useState<SportFilter>("skating");
+  const [sportFilter, setSportFilter] = useState<SportFilter>(defaultSportFilter);
   const [dropins, setDropins] = useState<DropIn[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,9 +74,14 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
   const [showPrograms, setShowPrograms] = useState(false);
 
   useEffect(() => {
+    const apiUrl =
+      assetId !== undefined
+        ? `/api/rinks/${assetId}/programs?view=${view}&date=${selectedDate}`
+        : `/api/locations/${locationId}/programs?view=${view}&date=${selectedDate}`;
+
     setLoading(true);
     setError(null);
-    fetch(`/api/rinks/${assetId}/programs?view=${view}&date=${selectedDate}`)
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((json) => {
         setDropins(json.data?.dropins ?? []);
@@ -74,7 +89,7 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
       })
       .catch(() => setError("Failed to load schedule."))
       .finally(() => setLoading(false));
-  }, [assetId, view, selectedDate]);
+  }, [assetId, locationId, view, selectedDate]);
 
   // Apply sport filter
   const filteredDropins = dropins.filter((d) => matchesSport(d.activity_type, sportFilter));
@@ -102,7 +117,7 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
               onClick={() => setView(v)}
               className={`px-4 py-2 text-sm font-medium capitalize transition ${
                 view === v
-                  ? "bg-blue-600 text-white"
+                  ? "bg-brand text-white"
                   : "text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -117,7 +132,7 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           />
         )}
 
@@ -126,7 +141,7 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
           <select
             value={sportFilter}
             onChange={(e) => setSportFilter(e.target.value as SportFilter)}
-            className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
           >
             {SPORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -144,7 +159,7 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-blue-500" />
+          <Loader2 size={24} className="animate-spin text-brand" />
         </div>
       ) : error ? (
         <p className="text-red-500 text-sm">{error}</p>
@@ -171,11 +186,11 @@ export function Timetable({ assetId, rinkType }: { assetId: number; rinkType?: s
                     return (
                       <div key={date}>
                         <p className={`text-sm font-semibold mb-2 ${
-                          isToday ? "text-blue-600" : "text-gray-600"
+                          isToday ? "text-brand" : "text-gray-600"
                         }`}>
                           {dateLabel}
                           {isToday && (
-                            <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
+                            <span className="ml-2 bg-brand/10 text-brand text-xs px-1.5 py-0.5 rounded-full">
                               Today
                             </span>
                           )}
@@ -273,7 +288,7 @@ function DropInRow({ dropin, isOutdoor }: { dropin: DropIn; isOutdoor?: boolean 
 
 function ProgramRow({ program }: { program: Program }) {
   return (
-    <div className="flex items-start justify-between bg-blue-50 rounded-xl px-3 py-2.5 gap-2">
+    <div className="flex items-start justify-between bg-brand/5 rounded-xl px-3 py-2.5 gap-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base font-medium text-gray-900 truncate">
@@ -301,7 +316,7 @@ function ProgramRow({ program }: { program: Program }) {
             href={program.activity_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            className="text-sm text-brand hover:underline flex items-center gap-1"
           >
             Register <ExternalLink size={11} />
           </a>
