@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Minus, Plus } from "lucide-react";
 import {
-  DAY_LABELS, getTodayISO,
+  getTodayISO,
   formatTimeRange, formatAgeRange, compactTitle, activityTypeColor,
 } from "@/lib/utils/timetable";
 import { SUB_ACTIVITY_MAP } from "@/lib/config/dropinFilters";
 import clsx from "clsx";
 
-type View = "day" | "week";
+type View = "day" | "week" | "calendar";
 type SportFilter = "skating" | "aquatics" | "fitness" | "arts" | "sports" | "all";
 
 const SPORT_OPTIONS: { value: SportFilter; label: string }[] = [
@@ -20,6 +20,8 @@ const SPORT_OPTIONS: { value: SportFilter; label: string }[] = [
   { value: "arts",     label: "Arts" },
   { value: "sports",   label: "Sports" },
 ];
+
+const CATEGORY_ORDER = ["aquatics", "skating", "fitness", "arts", "sports"];
 
 interface DropIn {
   course_id: number;
@@ -59,16 +61,42 @@ function matchesSport(activityType: string, filter: SportFilter): boolean {
   return activityType?.toLowerCase() === filter;
 }
 
+function getMondayISO(date: string): string {
+  const d = new Date(date + "T00:00:00");
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split("T")[0];
+}
+
+function shiftDate(date: string, days: number): string {
+  const d = new Date(date + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
+function sortedCats(map: Record<string, unknown[]>): string[] {
+  return Object.keys(map).sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a);
+    const bi = CATEGORY_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+}
+
+function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
 export function Timetable({
   assetId,
   locationId,
   rinkType,
   defaultSportFilter = "skating",
+  defaultShowPrograms = false,
 }: {
   assetId?: number;
   locationId?: number;
   rinkType?: string;
   defaultSportFilter?: SportFilter;
+  defaultShowPrograms?: boolean;
 }) {
   const [view, setView] = useState<View>("day");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
@@ -78,13 +106,17 @@ export function Timetable({
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPrograms, setShowPrograms] = useState(false);
+  const [showDropins, setShowDropins] = useState(true);
+  const [showPrograms, setShowPrograms] = useState(defaultShowPrograms);
+  const [calCollapsed, setCalCollapsed] = useState<Set<string>>(new Set());
+
+  const apiView = view === "calendar" ? "week" : view;
 
   useEffect(() => {
     const apiUrl =
       assetId !== undefined
-        ? `/api/rinks/${assetId}/programs?view=${view}&date=${selectedDate}`
-        : `/api/locations/${locationId}/programs?view=${view}&date=${selectedDate}`;
+        ? `/api/rinks/${assetId}/programs?view=${apiView}&date=${selectedDate}`
+        : `/api/locations/${locationId}/programs?view=${apiView}&date=${selectedDate}`;
 
     setLoading(true);
     setError(null);
@@ -96,9 +128,8 @@ export function Timetable({
       })
       .catch(() => setError("Failed to load schedule."))
       .finally(() => setLoading(false));
-  }, [assetId, locationId, view, selectedDate]);
+  }, [assetId, locationId, apiView, selectedDate]);
 
-  // Apply sport + sub-activity filter
   const filteredDropins = dropins
     .filter((d) => matchesSport(d.activity_type, sportFilter))
     .filter((d) => !subFilter || d.sub_activity === subFilter);
@@ -106,41 +137,92 @@ export function Timetable({
     .filter((p) => matchesSport(p.activity_type, sportFilter))
     .filter((p) => !subFilter || p.sub_activity === subFilter);
 
-  // Sub-activity options for the current sport filter
   const subOptions = sportFilter !== "all" ? (SUB_ACTIVITY_MAP[sportFilter] ?? []) : [];
 
-  // Group by actual date for week view
-  const dropinsByDate = filteredDropins.reduce((acc, d) => {
-    const date = d.first_date ?? d.day_of_week ?? "unknown";
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(d);
-    return acc;
-  }, {} as Record<string, DropIn[]>);
+  // Week list: date → items
+  const dropinsByDate = useMemo(() => {
+    return filteredDropins.reduce((acc, d) => {
+      const date = d.first_date ?? d.day_of_week ?? "unknown";
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(d);
+      return acc;
+    }, {} as Record<string, DropIn[]>);
+  }, [filteredDropins]);
+  const sortedDateKeys = useMemo(() => Object.keys(dropinsByDate).sort(), [dropinsByDate]);
 
-  const sortedDates = Object.keys(dropinsByDate).sort();
+  // Day view: category → items
+  const dropinsByCategory = useMemo(() => {
+    return filteredDropins.reduce((acc, d) => {
+      const cat = d.activity_type || "other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(d);
+      return acc;
+    }, {} as Record<string, DropIn[]>);
+  }, [filteredDropins]);
+
+  // Calendar grid
+  const weekStart = getMondayISO(selectedDate);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i)),
+    [weekStart]
+  );
+
+  interface CalRow { title: string; ageLabel: string; slots: Record<string, string[]> }
+  const calendarGroups = useMemo((): Record<string, CalRow[]> => {
+    if (view !== "calendar") return {};
+    const groups: Record<string, CalRow[]> = {};
+    for (const d of filteredDropins) {
+      const title = compactTitle(d.course_title);
+      const age = formatAgeRange(d.min_age_months, d.max_age_months);
+      const cat = d.activity_type || "other";
+      if (!groups[cat]) groups[cat] = [];
+      let row = groups[cat].find((r) => r.title === title && r.ageLabel === age);
+      if (!row) { row = { title, ageLabel: age, slots: {} }; groups[cat].push(row); }
+      const date = d.first_date;
+      if (date && weekDays.includes(date)) {
+        if (!row.slots[date]) row.slots[date] = [];
+        row.slots[date].push(formatTimeRange(d.start_time, d.end_time));
+      }
+    }
+    return groups;
+  }, [filteredDropins, view, weekDays]);
+
+  const today = getTodayISO();
+
+  const toggleCalCollapsed = (cat: string) =>
+    setCalCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+
+  const weekLabel = new Date(weekStart + "T00:00:00").toLocaleDateString("en-CA", {
+    year: "numeric", month: "long", day: "numeric",
+  });
 
   return (
     <div className="space-y-4">
-      {/* Controls row */}
+
+      {/* ── Controls ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Today / This Week toggle */}
         <div className="flex bg-gray-100 rounded-xl overflow-hidden">
-          {(["day", "week"] as View[]).map((v) => (
+          {([
+            { v: "day",      label: "Today"    },
+            { v: "week",     label: "Week"      },
+            { v: "calendar", label: "Calendar"  },
+          ] as { v: View; label: string }[]).map(({ v, label }) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-4 py-2 text-sm font-medium capitalize transition ${
-                view === v
-                  ? "bg-brand text-white"
-                  : "text-gray-600 hover:bg-gray-200"
+              className={`px-4 py-2 text-sm font-medium transition ${
+                view === v ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {v === "day" ? "Today" : "This Week"}
+              {label}
             </button>
           ))}
         </div>
 
-        {/* Date picker for day view */}
         {view === "day" && (
           <input
             type="date"
@@ -150,7 +232,28 @@ export function Timetable({
           />
         )}
 
-        {/* Sport filter dropdown */}
+        {(view === "week" || view === "calendar") && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedDate(shiftDate(selectedDate, -7))}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-xl hover:border-brand hover:text-brand transition"
+            >
+              ‹ Prev
+            </button>
+            <span className="text-sm text-gray-600 font-medium">
+              {new Date(weekStart + "T00:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
+              {" – "}
+              {new Date(shiftDate(weekStart, 6) + "T00:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
+            </span>
+            <button
+              onClick={() => setSelectedDate(shiftDate(selectedDate, 7))}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-xl hover:border-brand hover:text-brand transition"
+            >
+              Next ›
+            </button>
+          </div>
+        )}
+
         <div className="relative">
           <select
             value={sportFilter}
@@ -164,7 +267,6 @@ export function Timetable({
           <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
 
-        {/* Sub-activity filter — appears when a specific activity type is selected */}
         {subOptions.length > 0 && (
           <div className="relative">
             <select
@@ -182,7 +284,7 @@ export function Timetable({
         )}
       </div>
 
-      {/* Content */}
+      {/* ── Content ───────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 size={24} className="animate-spin text-brand" />
@@ -191,79 +293,234 @@ export function Timetable({
         <p className="text-red-500 text-sm">{error}</p>
       ) : (
         <>
-          {/* Drop-ins section */}
+          {/* Drop-ins */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-              Drop-In Schedule
-            </h3>
-
-            {view === "week" ? (
-              <div className="space-y-4">
-                {sortedDates.length === 0 ? (
-                  <EmptyState message="No drop-in sessions this week." />
-                ) : (
-                  sortedDates.map((date) => {
-                    const items = dropinsByDate[date];
-                    const dateObj = new Date(date + "T00:00:00");
-                    const isToday = date === getTodayISO();
-                    const dateLabel = dateObj.toLocaleDateString("en-CA", {
-                      weekday: "long", month: "short", day: "numeric",
-                    });
-                    return (
-                      <div key={date}>
-                        <p className={`text-sm font-semibold mb-2 ${
-                          isToday ? "text-brand" : "text-gray-600"
-                        }`}>
-                          {dateLabel}
-                          {isToday && (
-                            <span className="ml-2 bg-brand/10 text-brand text-xs px-1.5 py-0.5 rounded-full">
-                              Today
-                            </span>
-                          )}
-                        </p>
-                        <div className="space-y-2">
-                          {items.map((d) => (
-                            <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })
+            <button
+              onClick={() => setShowDropins(!showDropins)}
+              className="flex items-center justify-between w-full text-left px-4 py-3 rounded-xl"
+              style={{ backgroundColor: "#1a3a2a" }}
+            >
+              <span className="flex items-center gap-2.5">
+                <span className="text-base font-bold text-white" style={{ fontFamily: "var(--font-fraunces), serif" }}>
+                  Drop-In Schedule
+                </span>
+                {filteredDropins.length > 0 && (
+                  <span className="text-xs font-medium bg-white/15 text-white px-2 py-0.5 rounded-full">
+                    {filteredDropins.length} sessions
+                  </span>
                 )}
-              </div>
-            ) : (
-              // Day view
-              <div className="space-y-2">
-                {filteredDropins.length === 0 ? (
-                  <EmptyState message="No drop-in sessions for this day." />
+              </span>
+              {showDropins
+                ? <ChevronUp size={16} className="text-white/70 shrink-0" />
+                : <ChevronDown size={16} className="text-white/70 shrink-0" />
+              }
+            </button>
+
+            {showDropins && (
+              <div className="mt-3">
+
+                {/* ── CALENDAR ─────────────────────────────────────────────── */}
+                {view === "calendar" ? (
+                  Object.keys(calendarGroups).length === 0 ? (
+                    <EmptyState message="No drop-in sessions this week." />
+                  ) : (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Week of <span className="font-medium text-gray-700">{weekLabel}</span>
+                      </p>
+                      <div className="overflow-x-auto rounded-xl border border-gray-200">
+                        <table className="w-full border-collapse text-sm min-w-[600px]">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="text-left py-2.5 px-3 font-semibold text-gray-700 w-36 border-b border-gray-200">
+                                Program
+                              </th>
+                              {weekDays.map((day) => {
+                                const isToday = day === today;
+                                const dateObj = new Date(day + "T00:00:00");
+                                return (
+                                  <th
+                                    key={day}
+                                    className={clsx(
+                                      "py-2.5 px-2 text-center border-b min-w-[72px]",
+                                      isToday
+                                        ? "border-b-2 border-b-brand text-brand bg-brand/5"
+                                        : "border-gray-200 text-gray-600"
+                                    )}
+                                  >
+                                    <div className="font-semibold text-xs">
+                                      {dateObj.toLocaleDateString("en-US", { weekday: "short" })}
+                                    </div>
+                                    <div className="text-xs font-normal">
+                                      {dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                    </div>
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedCats(calendarGroups).flatMap((cat) => {
+                              const rows = calendarGroups[cat];
+                              const collapsed = calCollapsed.has(cat);
+                              return [
+                                <tr key={`hdr-${cat}`}>
+                                  <td colSpan={8} style={{ backgroundColor: "#1a3a2a" }} className="py-2 px-3">
+                                    <button
+                                      onClick={() => toggleCalCollapsed(cat)}
+                                      className="flex items-center gap-2 text-white font-semibold text-sm w-full text-left"
+                                    >
+                                      {collapsed
+                                        ? <Plus size={13} className="shrink-0" />
+                                        : <Minus size={13} className="shrink-0" />
+                                      }
+                                      {cap(cat)}
+                                    </button>
+                                  </td>
+                                </tr>,
+                                ...(!collapsed ? rows.map((row, ri) => (
+                                  <tr
+                                    key={`${cat}-${ri}`}
+                                    className={clsx(
+                                      "border-b border-gray-100",
+                                      ri % 2 === 0 ? "bg-white" : "bg-gray-50/60"
+                                    )}
+                                  >
+                                    <td className="py-2.5 px-3 align-top">
+                                      <div className="font-medium text-gray-900 text-sm leading-tight">{row.title}</div>
+                                      <div className="text-xs text-gray-500 mt-0.5">{row.ageLabel}</div>
+                                    </td>
+                                    {weekDays.map((day) => {
+                                      const isToday = day === today;
+                                      const slots = row.slots[day] ?? [];
+                                      return (
+                                        <td
+                                          key={day}
+                                          className={clsx(
+                                            "py-2 px-1 align-top text-center",
+                                            isToday && "bg-brand/5"
+                                          )}
+                                        >
+                                          {slots.map((s, si) => (
+                                            <div key={si} className="text-xs text-gray-700 leading-snug whitespace-nowrap">
+                                              {s}
+                                            </div>
+                                          ))}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                )) : []),
+                              ];
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+
+                /* ── WEEK LIST ──────────────────────────────────────────── */
+                ) : view === "week" ? (
+                  <div className="space-y-6">
+                    {sortedDateKeys.length === 0 ? (
+                      <EmptyState message="No drop-in sessions this week." />
+                    ) : (
+                      sortedDateKeys.map((date) => {
+                        const items = dropinsByDate[date];
+                        const isToday = date === today;
+                        const dateLabel = new Date(date + "T00:00:00").toLocaleDateString("en-CA", {
+                          weekday: "long", month: "short", day: "numeric",
+                        });
+
+                        const dayByCat: Record<string, DropIn[]> = {};
+                        for (const item of items) {
+                          const cat = item.activity_type || "other";
+                          if (!dayByCat[cat]) dayByCat[cat] = [];
+                          dayByCat[cat].push(item);
+                        }
+
+                        return (
+                          <div key={date}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-bold text-base text-gray-900">{dateLabel}</h3>
+                              {isToday && (
+                                <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                            <div className={clsx("h-px mb-3", isToday ? "bg-brand/40" : "bg-gray-100")} />
+                            <div className="space-y-3">
+                              {sortedCats(dayByCat).map((cat) => (
+                                <div key={cat}>
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+                                    {cap(cat)}
+                                  </p>
+                                  <div className="space-y-2">
+                                    {dayByCat[cat].map((d) => (
+                                      <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip />
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                /* ── DAY LIST ───────────────────────────────────────────── */
                 ) : (
-                  filteredDropins.map((d) => (
-                    <DropInRow key={`${d.course_id}-${d.day_of_week}`} dropin={d} isOutdoor={rinkType === "outdoor"} />
-                  ))
+                  <div className="space-y-3">
+                    {filteredDropins.length === 0 ? (
+                      <EmptyState message="No drop-in sessions for this day." />
+                    ) : (
+                      sortedCats(dropinsByCategory).map((cat) => (
+                        <div key={cat}>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+                            {cap(cat)}
+                          </p>
+                          <div className="space-y-2">
+                            {dropinsByCategory[cat].map((d) => (
+                              <DropInRow
+                                key={`${d.course_id}-${d.day_of_week}`}
+                                dropin={d}
+                                isOutdoor={rinkType === "outdoor"}
+                                hideChip
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Registered programs — collapsible */}
-          <div className="border-t border-gray-100 pt-4">
+          {/* Registered programs */}
+          <div>
             <button
               onClick={() => setShowPrograms(!showPrograms)}
-              className="flex items-center justify-between w-full text-left"
+              className="flex items-center justify-between w-full text-left px-4 py-3 rounded-xl"
+              style={{ backgroundColor: "#1a3a2a" }}
             >
-              <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                Registered Programs
+              <span className="flex items-center gap-2.5">
+                <span className="text-base font-bold text-white" style={{ fontFamily: "var(--font-fraunces), serif" }}>
+                  Registered Programs
+                </span>
                 {filteredPrograms.length > 0 && (
-                  <span className="ml-2 text-xs font-normal text-gray-500 normal-case">
+                  <span className="text-xs font-medium bg-white/15 text-white px-2 py-0.5 rounded-full">
                     {filteredPrograms.length} available
                   </span>
                 )}
               </span>
-              {showPrograms ? (
-                <ChevronUp size={16} className="text-gray-400" />
-              ) : (
-                <ChevronDown size={16} className="text-gray-400" />
-              )}
+              {showPrograms
+                ? <ChevronUp size={16} className="text-white/70 shrink-0" />
+                : <ChevronDown size={16} className="text-white/70 shrink-0" />
+              }
             </button>
 
             {showPrograms && (
@@ -284,7 +541,9 @@ export function Timetable({
   );
 }
 
-function DropInRow({ dropin, isOutdoor }: { dropin: DropIn; isOutdoor?: boolean }) {
+function DropInRow({
+  dropin, isOutdoor, hideChip = false,
+}: { dropin: DropIn; isOutdoor?: boolean; hideChip?: boolean }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
       <div className="flex-1 min-w-0">
@@ -292,9 +551,11 @@ function DropInRow({ dropin, isOutdoor }: { dropin: DropIn; isOutdoor?: boolean 
           <span className="text-base font-medium text-gray-900 truncate">
             {compactTitle(dropin.course_title)}
           </span>
-          <span className={`text-sm px-1.5 py-0.5 rounded-full shrink-0 ${activityTypeColor(dropin.activity_type)}`}>
-            {dropin.activity_type}
-          </span>
+          {!hideChip && (
+            <span className={`text-sm px-1.5 py-0.5 rounded-full shrink-0 ${activityTypeColor(dropin.activity_type)}`}>
+              {dropin.activity_type}
+            </span>
+          )}
           {isOutdoor && (
             <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
               Free
@@ -353,7 +614,5 @@ function ProgramRow({ program }: { program: Program }) {
 }
 
 function EmptyState({ message }: { message: string }) {
-  return (
-    <p className="text-sm text-gray-500 py-4 text-center">{message}</p>
-  );
+  return <p className="text-sm text-gray-500 py-4 text-center">{message}</p>;
 }
