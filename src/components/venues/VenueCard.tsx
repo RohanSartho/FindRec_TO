@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, MapPin, Building2, TreePine } from "lucide-react";
+import { Heart, MapPin, House, TreePine, Waves, Palette, Dumbbell, Snowflake, Trophy } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+const ACTIVITY_ICONS: Record<string, LucideIcon> = {
+  aquatics: Waves,
+  arts:     Palette,
+  fitness:  Dumbbell,
+  skating:  Snowflake,
+  sports:   Trophy,
+};
 import { AuthModal } from "@/components/ui/AuthModal";
 import { useFavourite } from "@/lib/hooks/useFavourite";
 import { activityTypeColor } from "@/lib/utils/timetable";
@@ -15,6 +24,7 @@ export interface Venue {
   district: string | null;
   activity_types: string[];
   rink: { asset_id: number; rink_type: "indoor" | "outdoor" } | null;
+  venue_type: "indoor" | "outdoor" | null;
 }
 
 export function VenueCard({ venue }: { venue: Venue }) {
@@ -43,21 +53,22 @@ export function VenueCard({ venue }: { venue: Venue }) {
         {/* Header row */}
         <div className="relative z-20 flex items-start justify-between gap-2 pointer-events-none">
           <div className="flex-1 min-w-0">
-            {/* Rink type badge — only for venues with a rink */}
-            {venue.rink && (
-              <div className={clsx(
-                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mb-1.5",
-                venue.rink.rink_type === "indoor"
-                  ? "bg-brand/10 text-brand"
-                  : "bg-green-100 text-green-700"
-              )}>
-                {venue.rink.rink_type === "indoor"
-                  ? <Building2 size={12} className="shrink-0" />
-                  : <TreePine size={12} className="shrink-0" />
-                }
-                {venue.rink.rink_type === "indoor" ? "Indoor Rink" : "Outdoor Rink"}
-              </div>
-            )}
+            {/* Indoor / Outdoor badge — rink takes priority, then venue_type */}
+            {(venue.rink || venue.venue_type) && (() => {
+              const type = venue.rink ? venue.rink.rink_type : venue.venue_type!;
+              return (
+                <div className={clsx(
+                  "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mb-1.5",
+                  type === "indoor" ? "bg-red-50 text-red-700" : "bg-green-100 text-green-700"
+                )}>
+                  {type === "indoor"
+                    ? <House size={12} className="shrink-0" />
+                    : <TreePine size={12} className="shrink-0" />
+                  }
+                  {type === "indoor" ? "Indoor" : "Outdoor"}
+                </div>
+              );
+            })()}
             <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
               {venue.name}
             </h3>
@@ -91,14 +102,18 @@ export function VenueCard({ venue }: { venue: Venue }) {
         {/* Activity type chips */}
         {venue.activity_types.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {venue.activity_types.map((type) => (
-              <span
-                key={type}
-                className={`text-xs px-2 py-0.5 rounded-full capitalize ${activityTypeColor(type)}`}
-              >
-                {type}
-              </span>
-            ))}
+            {venue.activity_types.map((type) => {
+              const Icon = ACTIVITY_ICONS[type];
+              return (
+                <span
+                  key={type}
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full capitalize ${activityTypeColor(type)}`}
+                >
+                  {Icon && <Icon size={11} className="shrink-0" />}
+                  {type}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>

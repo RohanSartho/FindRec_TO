@@ -172,6 +172,7 @@ export type Database = {
           postal_code: string | null
           raw_geometry: Json | null
           updated_at: string | null
+          venue_type: string | null
           ward: string | null
         }
         Insert: {
@@ -187,6 +188,7 @@ export type Database = {
           postal_code?: string | null
           raw_geometry?: Json | null
           updated_at?: string | null
+          venue_type?: string | null
           ward?: string | null
         }
         Update: {
@@ -202,6 +204,7 @@ export type Database = {
           postal_code?: string | null
           raw_geometry?: Json | null
           updated_at?: string | null
+          venue_type?: string | null
           ward?: string | null
         }
         Relationships: []

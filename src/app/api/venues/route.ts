@@ -13,32 +13,9 @@ import { NextRequest, NextResponse } from "next/server";
 //   rink: { asset_id, rink_type } — present only if location has a skating rink
 //
 // Activity filter strategy:
-//   "skating"  → from rinks table (authoritative, works offline)
-//   all others → from dropins + programs tables (reflects actual scheduled activities)
-//   no filter  → from facilities + rinks (broad overview)
-
-async function fetchAllFacilities(
-  supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<Array<{ location_id: number; activity_type: string }>> {
-  const pageSize = 1000;
-  let offset = 0;
-  const results: Array<{ location_id: number; activity_type: string }> = [];
-
-  while (true) {
-    const { data, error } = await supabase
-      .from("facilities")
-      .select("location_id, activity_type")
-      .not("location_id", "is", null)
-      .range(offset, offset + pageSize - 1);
-
-    if (error || !data || data.length === 0) break;
-    results.push(...data as Array<{ location_id: number; activity_type: string }>);
-    if (data.length < pageSize) break;
-    offset += pageSize;
-  }
-
-  return results;
-}
+//   "skating"  → from rinks table (authoritative)
+//   all others → from dropins + programs tables (reflects real scheduled activities)
+//   no filter  → union of all known activity types from dropins + programs + rinks
 
 /** Get distinct location_ids that have sessions for a given activity_type (and optional sub_activity). */
 async function locationIdsForActivity(
@@ -132,23 +109,27 @@ export async function GET(req: NextRequest) {
       }
 
     } else {
-      // ── No filter: broad overview from facilities + rinks ─────────────────
-      const facilityRows = await fetchAllFacilities(supabase);
-      for (const f of facilityRows) {
-        if (!activityMap.has(f.location_id)) activityMap.set(f.location_id, new Set());
-        activityMap.get(f.location_id)!.add(f.activity_type);
+      // ── No filter: union of all non-skating activities from dropins + programs ──
+      const KNOWN_NON_SKATING = ["fitness", "aquatics", "arts", "sports"] as const;
+
+      const typeResults = await Promise.all(
+        KNOWN_NON_SKATING.map((t) => locationIdsForActivity(supabase, t))
+      );
+
+      for (let i = 0; i < KNOWN_NON_SKATING.length; i++) {
+        for (const id of typeResults[i]) {
+          if (!activityMap.has(id)) activityMap.set(id, new Set());
+          activityMap.get(id)!.add(KNOWN_NON_SKATING[i]);
+        }
       }
-      // Supplement with rinks
+
+      // Add skating from rinks (authoritative)
       for (const [locId] of rinkMap) {
         if (!activityMap.has(locId)) activityMap.set(locId, new Set());
         activityMap.get(locId)!.add("skating");
       }
 
-      // Exclude locations whose only activity is "other" and have no rink
-      locationIds = Array.from(activityMap.keys()).filter((id) => {
-        const types = activityMap.get(id)!;
-        return !(types.size === 1 && types.has("other")) && !(types.size === 0);
-      });
+      locationIds = Array.from(activityMap.keys());
     }
 
     if (locationIds.length === 0) return NextResponse.json({ data: [] });
@@ -179,14 +160,14 @@ export async function GET(req: NextRequest) {
     // ── Query locations ──────────────────────────────────────────────────────
     const { data: locations, error } = await supabase
       .from("locations")
-      .select("id, name, address, district")
+      .select("id, name, address, district, venue_type")
       .in("id", locationIds)
       .order("name");
 
     if (error) throw error;
 
     // ── Enrich with activity types + rink info ───────────────────────────────
-    const enriched = (locations ?? []).map((loc: { id: number; name: string; address: string | null; district: string | null }) => ({
+    const enriched = (locations ?? []).map((loc: { id: number; name: string; address: string | null; district: string | null; venue_type: string | null }) => ({
       ...loc,
       activity_types: Array.from(activityMap.get(loc.id) ?? []).sort(),
       rink: rinkMap.get(loc.id) ?? null,

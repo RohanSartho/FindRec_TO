@@ -422,12 +422,21 @@ Deno.serve(async (_req) => {
     const { data: knownLocations } = await supabase.from("locations").select("id");
     const knownLocationIds = new Set((knownLocations ?? []).map((l: any) => l.id));
 
+    const INDOOR_POOL_TYPES = new Set(["Indoor Pool"]);
+    const OUTDOOR_POOL_TYPES = new Set(["Outdoor Pool", "Wading Pool", "Waterpark", "Splash Pad"]);
+    const INDOOR_FACILITY_TYPES = new Set([
+      "Weight/Cardio Room", "Gymnasium", "Craft Room", "Fitness/Dance Studio",
+      "Auditorium", "Indoor Tennis Court", "Indoor Squash Court", "Indoor Track",
+      "Indoor Bocce Court", "Indoor Dry Pad", "Curling Rink",
+      "Computer/Training Room", "Snoezelen Room", "Recording Studio", "Games Room", "Playroom",
+    ]);
+
     const facilities = rawFacilities
       .filter((r: any) => knownLocationIds.has(Number(r["Location ID"])))
       .map((r: any) => ({
         location_id: Number(r["Location ID"]),
-        activity_type: inferActivityType(r["Facility Name"] ?? "", r["Section"] ?? ""),
-        facility_name: r["Facility Name"] ?? null,
+        activity_type: inferActivityType(r["Facility Type (Display Name)"] ?? "", r["Section"] ?? ""),
+        facility_name: r["Facility Type (Display Name)"] ?? null,
         section: r["Section"] ?? null,
         metadata: {
           course_id: r["Course_ID"] ?? null,
@@ -440,6 +449,25 @@ Deno.serve(async (_req) => {
         const chunk = facilities.slice(i, i + UPSERT_CHUNK);
         const { error } = await supabase.from("facilities").insert(chunk);
         if (error) throw new Error(`facilities insert (offset ${i}): ${error.message}`);
+      }
+    }
+
+    // Update venue_type on locations from facility display names
+    const venueTypeByLocation = new Map<number, string>();
+    for (const r of rawFacilities) {
+      const locId = Number(r["Location ID"]);
+      const ftype: string = r["Facility Type (Display Name)"] ?? "";
+      if (!locId || !ftype) continue;
+      const current = venueTypeByLocation.get(locId);
+      if (current === "indoor") continue; // already highest priority
+      if (INDOOR_POOL_TYPES.has(ftype)) { venueTypeByLocation.set(locId, "indoor"); continue; }
+      if (current === "outdoor") continue;
+      if (OUTDOOR_POOL_TYPES.has(ftype)) { venueTypeByLocation.set(locId, "outdoor"); continue; }
+      if (INDOOR_FACILITY_TYPES.has(ftype)) { venueTypeByLocation.set(locId, "indoor"); }
+    }
+    for (const [locId, vtype] of venueTypeByLocation) {
+      if (knownLocationIds.has(locId)) {
+        await supabase.from("locations").update({ venue_type: vtype } as any).eq("id", locId);
       }
     }
     rowCounts.facilities = facilities.length;
