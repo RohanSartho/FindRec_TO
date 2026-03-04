@@ -144,7 +144,11 @@ export async function GET(req: NextRequest) {
         activityMap.get(locId)!.add("skating");
       }
 
-      locationIds = Array.from(activityMap.keys());
+      // Exclude locations whose only activity is "other" and have no rink
+      locationIds = Array.from(activityMap.keys()).filter((id) => {
+        const types = activityMap.get(id)!;
+        return !(types.size === 1 && types.has("other")) && !(types.size === 0);
+      });
     }
 
     if (locationIds.length === 0) return NextResponse.json({ data: [] });
