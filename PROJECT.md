@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-04 (story: Phase 14 — address backfill from CKAN component fields)
+> Last updated: 2026-03-04 (story: Phase 15 — Mapbox map view for venues and drop-ins)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -75,6 +75,9 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0007_dropin_unique_fix.sql` | Correct unique key: (course_id, location_id, first_date) |
 | `0011_sub_activity.sql` | Add sub_activity column to dropins + programs; fix Pickleball/Badminton/Tai Chi activity_type; backfill sub_activity via ILIKE |
 | `0012_backfill_addresses.sql` | Backfill address + postal_code for 1,922 locations from CKAN component fields (Street No / Street Name / Street Type / Street Direction) |
+| `0013_venue_type.sql` | Add venue_type TEXT column to locations (indoor/outdoor) |
+| `0014_backfill_venue_types.sql` | Backfill venue_type from CKAN facilities (147 indoor, 291 outdoor) |
+| `0015_location_lat_lng.sql` | Add lat/lng float columns to locations, backfilled from PostGIS coordinates |
 
 ---
 
@@ -119,6 +122,9 @@ src/
 │   │   └── DropInResultsTable.tsx  # Grouped sessions table with Free badge
 │   ├── layout/
 │   │   └── Navbar.tsx              # Sticky nav, auth state, user menu
+│   ├── map/
+│   │   ├── VenueMapView.tsx        # Mapbox map for Find Venues tab — markers + popup (name, address, chips, link)
+│   │   └── DropInMapView.tsx       # Mapbox map for Drop-ins tab — unique location markers with session time popups
 │   ├── rinks/
 │   │   ├── RinkCard.tsx            # Card — live status, full-card link, colored type badge
 │   │   ├── RinkListItem.tsx        # Compact list row (list view mode)
@@ -188,7 +194,7 @@ See `BACKLOG.md` for tracked stories.
 Key items:
 - `[DATA-001]` Free Centre flag on locations
 - `[NOTIF-001]` Seasonal change notification on login
-- `[UX-001]` Map view for rink discovery
+- `[UX-001]` Map view — **Done (Phase 15)**
 - `[UX-002]` Add to Calendar
 - `[ADMIN-001]` Sync health dashboard
 
@@ -200,6 +206,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=
+NEXT_PUBLIC_MAPBOX_TOKEN=   # public token (pk.eyJ1...) — styles:read, tiles:read, fonts:read
 ```
 
 Never commit `.env.local`. Keys are in Supabase dashboard → Settings → API.
@@ -245,4 +252,5 @@ npx tsc --noEmit                               # Check for type errors
 | 12 | Venues browser redesign — /skating renamed /activities, shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
 | 13 | sub_activity column on dropins + programs (migration 0011); inferActivityType bug fix (Pickleball/Badminton/Tai Chi now correctly classified); SUB_ACTIVITY_MAP config; sub-activity dropdown in venues browser; sub-activity chips in DropInFilterPanel; sport+sub-activity dropdowns in Timetable; non-skating drop-in search mode |
 | 14 | Address backfill: discovered CKAN locations resource has split fields (Street No/Name/Type/Dir) not a single "Address" field. Script fetched 1,925 records, generated migration 0012 with 1,922 UPDATEs. Fixed ingest-ckan to build address from components going forward. [UX-003] updated to cover remaining gap via Google Places. |
+| 15 | Mapbox map view: migration 0015 (lat/lng cols on locations), VenueMapView + DropInMapView components (react-map-gl v8 + mapbox-gl v3), Grid/List/Map toggle in Find Venues, List/Map toggle in Drop-ins. Requires NEXT_PUBLIC_MAPBOX_TOKEN in env. |
 | Next | Vercel deploy, analytics, polish |
