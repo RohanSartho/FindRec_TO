@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased text-gray-900`} style={{ backgroundColor: "#f5f2ec" }}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased text-gray-900`} style={{ backgroundColor: "#f5f2ec" }} suppressHydrationWarning>
         <FavouritesProvider>
           <Navbar />
           <main>{children}</main>
