@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-03 (story: Phase 12 — venues browser, activity filter, conditional indoor/outdoor)
+> Last updated: 2026-03-03 (story: Phase 13 — sub_activity column, sub-activity filtering across venues/timetable/drop-in)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -73,6 +73,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0005_orphan_rink_stubs.sql` | 3 orphan location + rink stubs |
 | `0006_coordinate_backfill_helper.sql` | Backfill PostGIS coords from raw_geometry |
 | `0007_dropin_unique_fix.sql` | Correct unique key: (course_id, location_id, first_date) |
+| `0011_sub_activity.sql` | Add sub_activity column to dropins + programs; fix Pickleball/Badminton/Tai Chi activity_type; backfill sub_activity via ILIKE |
 
 ---
 
@@ -84,9 +85,9 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/rinks/[id]` | GET | Single rink with location + live status |
 | `/api/rinks/[id]/status` | GET | Live status only (lightweight polling) |
 | `/api/rinks/[id]/programs` | GET | Timetable — dropins + programs by view/date |
-| `/api/venues` | GET | All venues enriched with activity_types + rink info; filters: activity_type, rink_type, district, geo |
-| `/api/locations/[id]/programs` | GET | Timetable by location_id (for non-rink venues) |
-| `/api/dropin-search` | GET | Drop-in sessions — filters: date, program_types, district, geo |
+| `/api/venues` | GET | All venues enriched with activity_types + rink info; filters: activity_type, sub_activity, rink_type, district, geo |
+| `/api/locations/[id]/programs` | GET | Timetable by location_id (for non-rink venues); includes sub_activity |
+| `/api/dropin-search` | GET | Drop-in sessions — skating mode (program_types chips) or non-skating mode (activity_type + sub_activity); filters: date, district, geo, time |
 | `/api/programs` | GET | Programs — filters: location_id, activity_type, date |
 | `/api/districts` | GET | Distinct districts for filter UI |
 | `/api/seasons` | GET | Season list |
@@ -99,7 +100,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | Route | Type | Purpose |
 |---|---|---|
 | `/` | Server | Home — hero + CTA |
-| `/skating` | Client | Venues browser (all activities) + Drop-ins Today mode |
+| `/activities` | Client | Venues browser (all activities) + Drop-ins Today mode |
 | `/skating/[asset_id]` | Server | Rink detail — info + timetable |
 | `/venues/[location_id]` | Server | Non-rink venue detail — info + schedule |
 | `/favourites` | Client | Auth-gated saved locations |
@@ -113,7 +114,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 src/
 ├── components/
 │   ├── dropin/
-│   │   ├── DropInFilterPanel.tsx   # Program type chips, location, date, time-of-day filters
+│   │   ├── DropInFilterPanel.tsx   # Activity type + sub-activity chips; Program type chips (skating only); location, date, time-of-day filters
 │   │   └── DropInResultsTable.tsx  # Grouped sessions table with Free badge
 │   ├── layout/
 │   │   └── Navbar.tsx              # Sticky nav, auth state, user menu
@@ -128,7 +129,7 @@ src/
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
 ├── lib/
 │   ├── config/
-│   │   └── dropinFilters.ts        # Program filter options + districts + radius + ACTIVITY_FILTER_OPTIONS
+│   │   └── dropinFilters.ts        # Program filter options + districts + radius + ACTIVITY_FILTER_OPTIONS + SUB_ACTIVITY_MAP
 │   ├── context/
 │   │   └── FavouritesContext.tsx   # Single fetch, optimistic toggle, shared state
 │   ├── hooks/
@@ -240,5 +241,6 @@ npx tsc --noEmit                               # Check for type errors
 | 9 | 8 UX improvements: full card click, sport filter in timetable, venue font polish, remove status badge, wider drop-ins layout, bolder filter border, side-by-side location controls, table font bump |
 | 10 | 12 UX improvements: live status in grid, no unknown badge, pointer-events fix, colored type badge, grid/list toggle, name search, Near Me X + radius in grid, time-of-day filter in drop-ins, Free badge on outdoor sessions, Google Maps + web links in venue detail |
 | 11 | Custom time range filter (preset chips + From/To dropdowns, overlap logic), Toronto.ca official venue page links, Dennis R. Timbrell address + coords + indoor type corrections |
-| 12 | Venues browser redesign — /skating page now shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
+| 12 | Venues browser redesign — /skating renamed /activities, shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
+| 13 | sub_activity column on dropins + programs (migration 0011); inferActivityType bug fix (Pickleball/Badminton/Tai Chi now correctly classified); SUB_ACTIVITY_MAP config; sub-activity dropdown in venues browser; sub-activity chips in DropInFilterPanel; sport+sub-activity dropdowns in Timetable; non-skating drop-in search mode |
 | Next | Vercel deploy, analytics, polish |
