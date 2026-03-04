@@ -111,6 +111,8 @@ export async function GET(req: NextRequest) {
         name,
         address,
         district,
+        lat,
+        lng,
         rinks (
           asset_id,
           rink_type

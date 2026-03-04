@@ -168,6 +168,8 @@ export type Database = {
           district: string | null
           id: number
           last_synced_at: string | null
+          lat: number | null
+          lng: number | null
           name: string
           postal_code: string | null
           raw_geometry: Json | null
@@ -184,6 +186,8 @@ export type Database = {
           district?: string | null
           id: number
           last_synced_at?: string | null
+          lat?: number | null
+          lng?: number | null
           name: string
           postal_code?: string | null
           raw_geometry?: Json | null
@@ -200,6 +204,8 @@ export type Database = {
           district?: string | null
           id?: number
           last_synced_at?: string | null
+          lat?: number | null
+          lng?: number | null
           name?: string
           postal_code?: string | null
           raw_geometry?: Json | null

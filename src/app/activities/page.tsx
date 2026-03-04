@@ -6,15 +6,17 @@ import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilt
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
 import {
   MapPin, ChevronDown, ChevronUp, Loader2,
-  X, LayoutGrid, List, Search, Filter,
+  X, LayoutGrid, List, Search, Filter, Map as MapIcon,
 } from "lucide-react";
 import {
   DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS, ACTIVITY_FILTER_OPTIONS, SUB_ACTIVITY_MAP,
 } from "@/lib/config/dropinFilters";
+import { VenueMapView } from "@/components/map/VenueMapView";
+import { DropInMapView } from "@/components/map/DropInMapView";
 import clsx from "clsx";
 
 type PageMode = "venues" | "dropins";
-type ViewStyle = "grid" | "list";
+type ViewStyle = "grid" | "list" | "map";
 type RinkTypeFilter = "" | "indoor" | "outdoor";
 
 // Activities that expose the Indoor / Outdoor sub-filter
@@ -60,6 +62,7 @@ export default function VenuesPage() {
   } | null>(null);
   const [dropinLoading, setDropinLoading] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [dropinViewStyle, setDropinViewStyle] = useState<"list" | "map">("list");
 
   // ── fetchVenues ───────────────────────────────────────────────────────────
   const fetchVenues = useCallback(async (options?: {
@@ -385,7 +388,7 @@ export default function VenuesPage() {
               />
             </div>
 
-            {/* Grid / List toggle */}
+            {/* Grid / List / Map toggle */}
             <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden ml-auto">
               <button
                 onClick={() => setViewStyle("grid")}
@@ -401,10 +404,17 @@ export default function VenuesPage() {
               >
                 <List size={16} />
               </button>
+              <button
+                onClick={() => setViewStyle("map")}
+                className={clsx("p-2 transition", viewStyle === "map" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
+                aria-label="Map view"
+              >
+                <MapIcon size={16} />
+              </button>
             </div>
           </div>
 
-          {/* ── Venue grid / list ──────────────────────────────────────── */}
+          {/* ── Venue grid / list / map ────────────────────────────────── */}
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <Loader2 size={32} className="animate-spin text-brand" />
@@ -416,6 +426,8 @@ export default function VenuesPage() {
               <p className="text-lg font-medium mb-1">No venues found</p>
               <p className="text-sm">Try adjusting your filters or expanding your search area.</p>
             </div>
+          ) : viewStyle === "map" ? (
+            <VenueMapView venues={filteredVenues} />
           ) : viewStyle === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredVenues.map((venue) => (
@@ -465,11 +477,37 @@ export default function VenuesPage() {
                 <p className="text-sm">Choose your filters and tap &ldquo;Find Drop-ins&rdquo; to see what&apos;s on.</p>
               </div>
             ) : (
-              <DropInResultsTable
-                groups={dropinResults.groups}
-                total={dropinResults.total}
-                date={dropinResults.date}
-              />
+              <>
+                {/* List / Map toggle */}
+                <div className="flex justify-end mb-3">
+                  <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setDropinViewStyle("list")}
+                      className={clsx("p-2 transition", dropinViewStyle === "list" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
+                      aria-label="List view"
+                    >
+                      <List size={16} />
+                    </button>
+                    <button
+                      onClick={() => setDropinViewStyle("map")}
+                      className={clsx("p-2 transition", dropinViewStyle === "map" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
+                      aria-label="Map view"
+                    >
+                      <MapIcon size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {dropinViewStyle === "map" ? (
+                  <DropInMapView groups={dropinResults.groups} />
+                ) : (
+                  <DropInResultsTable
+                    groups={dropinResults.groups}
+                    total={dropinResults.total}
+                    date={dropinResults.date}
+                  />
+                )}
+              </>
             )}
           </div>
         </div>

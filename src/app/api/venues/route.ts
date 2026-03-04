@@ -160,14 +160,14 @@ export async function GET(req: NextRequest) {
     // ── Query locations ──────────────────────────────────────────────────────
     const { data: locations, error } = await supabase
       .from("locations")
-      .select("id, name, address, district, venue_type")
+      .select("id, name, address, district, venue_type, lat, lng")
       .in("id", locationIds)
       .order("name");
 
     if (error) throw error;
 
     // ── Enrich with activity types + rink info ───────────────────────────────
-    const enriched = (locations ?? []).map((loc: { id: number; name: string; address: string | null; district: string | null; venue_type: string | null }) => ({
+    const enriched = (locations ?? []).map((loc: { id: number; name: string; address: string | null; district: string | null; venue_type: string | null; lat: number | null; lng: number | null }) => ({
       ...loc,
       activity_types: Array.from(activityMap.get(loc.id) ?? []).sort(),
       rink: rinkMap.get(loc.id) ?? null,

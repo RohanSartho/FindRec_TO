@@ -25,6 +25,8 @@ export interface Venue {
   activity_types: string[];
   rink: { asset_id: number; rink_type: "indoor" | "outdoor" } | null;
   venue_type: "indoor" | "outdoor" | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export function VenueCard({ venue }: { venue: Venue }) {
