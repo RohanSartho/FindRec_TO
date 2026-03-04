@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Map, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
+import type { MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
@@ -10,8 +11,15 @@ import type { Venue } from "@/components/venues/VenueCard";
 
 const TORONTO_CENTER = { longitude: -79.38, latitude: 43.70, zoom: 11 };
 
-export function VenueMapView({ venues }: { venues: Venue[] }) {
+interface VenueMapViewProps {
+  venues: Venue[];
+  userLat?: number | null;
+  userLng?: number | null;
+}
+
+export function VenueMapView({ venues, userLat, userLng }: VenueMapViewProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const pins = venues.filter(
     (v): v is Venue & { lat: number; lng: number } =>
@@ -25,16 +33,38 @@ export function VenueMapView({ venues }: { venues: Venue[] }) {
     setSelectedId((prev) => (prev === id ? null : id));
   }, []);
 
+  // Fly to user location when Near Me is activated while map is visible
+  useEffect(() => {
+    if (userLat && userLng && mapRef.current) {
+      mapRef.current.flyTo({ center: [userLng, userLat], zoom: 13, duration: 1200 });
+    }
+  }, [userLat, userLng]);
+
+  const initialViewState = (userLat && userLng)
+    ? { longitude: userLng, latitude: userLat, zoom: 13 }
+    : TORONTO_CENTER;
+
   return (
     <div className="w-full h-[580px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
       <Map
+        ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-        initialViewState={TORONTO_CENTER}
+        initialViewState={initialViewState}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/mapbox/streets-v12"
         onClick={() => setSelectedId(null)}
       >
         <NavigationControl position="top-right" />
+
+        {/* User location dot */}
+        {userLat && userLng && (
+          <Marker longitude={userLng} latitude={userLat} anchor="center">
+            <div className="relative flex items-center justify-center w-6 h-6">
+              <div className="absolute w-6 h-6 rounded-full bg-blue-400 opacity-40 animate-ping" />
+              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-md" />
+            </div>
+          </Marker>
+        )}
 
         {pins.map((venue) => (
           <Marker

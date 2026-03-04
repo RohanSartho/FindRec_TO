@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import MapGL, { Marker, Popup, NavigationControl } from "react-map-gl/mapbox";
+import type { MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
@@ -38,8 +39,15 @@ interface DropInPin {
   sessionSummaries: { programType: string; time: string }[];
 }
 
-export function DropInMapView({ groups }: { groups: Group[] }) {
+interface DropInMapViewProps {
+  groups: Group[];
+  userLat?: number | null;
+  userLng?: number | null;
+}
+
+export function DropInMapView({ groups, userLat, userLng }: DropInMapViewProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const pins = useMemo<DropInPin[]>(() => {
     const locMap = new Map<number, DropInPin>();
@@ -75,6 +83,17 @@ export function DropInMapView({ groups }: { groups: Group[] }) {
     setSelectedId((prev) => (prev === id ? null : id));
   }, []);
 
+  // Fly to user location when Near Me is active
+  useEffect(() => {
+    if (userLat && userLng && mapRef.current) {
+      mapRef.current.flyTo({ center: [userLng, userLat], zoom: 13, duration: 1200 });
+    }
+  }, [userLat, userLng]);
+
+  const initialViewState = (userLat && userLng)
+    ? { longitude: userLng, latitude: userLat, zoom: 13 }
+    : TORONTO_CENTER;
+
   if (pins.length === 0) {
     return (
       <div className="w-full h-[480px] rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400">
@@ -86,13 +105,24 @@ export function DropInMapView({ groups }: { groups: Group[] }) {
   return (
     <div className="w-full h-[480px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
       <MapGL
+        ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-        initialViewState={TORONTO_CENTER}
+        initialViewState={initialViewState}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/mapbox/streets-v12"
         onClick={() => setSelectedId(null)}
       >
         <NavigationControl position="top-right" />
+
+        {/* User location dot */}
+        {userLat && userLng && (
+          <Marker longitude={userLng} latitude={userLat} anchor="center">
+            <div className="relative flex items-center justify-center w-6 h-6">
+              <div className="absolute w-6 h-6 rounded-full bg-blue-400 opacity-40 animate-ping" />
+              <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-md" />
+            </div>
+          </Marker>
+        )}
 
         {pins.map((pin) => (
           <Marker

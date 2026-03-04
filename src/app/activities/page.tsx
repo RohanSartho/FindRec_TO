@@ -191,10 +191,16 @@ export default function VenuesPage() {
           radius: parseInt(nearMeRadius) * 1000,
         });
       },
-      () => {
-        alert("Unable to get your location. Please check your browser permissions.");
+      (err) => {
+        const msg = err.code === 1
+          ? "Location access denied. Allow location in your browser settings and try again."
+          : err.code === 3
+          ? "Location request timed out. Try again."
+          : "Unable to get your location.";
+        alert(msg);
         setGeoLoading(false);
-      }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   };
 
@@ -427,7 +433,11 @@ export default function VenuesPage() {
               <p className="text-sm">Try adjusting your filters or expanding your search area.</p>
             </div>
           ) : viewStyle === "map" ? (
-            <VenueMapView venues={filteredVenues} />
+            <VenueMapView
+            venues={filteredVenues}
+            userLat={isNearMe ? nearMeLat : null}
+            userLng={isNearMe ? nearMeLng : null}
+          />
           ) : viewStyle === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredVenues.map((venue) => (
@@ -499,7 +509,11 @@ export default function VenuesPage() {
                 </div>
 
                 {dropinViewStyle === "map" ? (
-                  <DropInMapView groups={dropinResults.groups} />
+                  <DropInMapView
+                    groups={dropinResults.groups}
+                    userLat={dropinFilters.isNearMe ? dropinFilters.lat : null}
+                    userLng={dropinFilters.isNearMe ? dropinFilters.lng : null}
+                  />
                 ) : (
                   <DropInResultsTable
                     groups={dropinResults.groups}

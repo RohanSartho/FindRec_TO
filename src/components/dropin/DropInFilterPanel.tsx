@@ -152,10 +152,16 @@ export function DropInFilterPanel({
         });
         setGeoLoading(false);
       },
-      () => {
-        alert("Unable to get your location.");
+      (err) => {
+        const msg = err.code === 1
+          ? "Location access denied. Allow location in your browser settings and try again."
+          : err.code === 3
+          ? "Location request timed out. Try again."
+          : "Unable to get your location.";
+        alert(msg);
         setGeoLoading(false);
-      }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
   };
 
