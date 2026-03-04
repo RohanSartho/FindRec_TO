@@ -195,16 +195,28 @@ Deno.serve(async (_req) => {
 
     if (locationsResourceId) {
       const rawLocations = await fetchCkanResource(locationsResourceId);
-      const locations = rawLocations.map((r: any) => ({
-        id: r["Location ID"] ?? r["locationid"] ?? r["_id"],
-        name: r["Location Name"] ?? r["Parent Asset Name"] ?? r["name"] ?? "",
-        address: r["Address"] ?? null,
-        postal_code: r["Postal Code"] ?? null,
-        ward: r["Ward"] ? String(r["Ward"]) : null,
-        community_council: r["Community Council Area"] ?? null,
-        district: r["Community Council Area"] ?? null,
-        ...(r["geometry"] ? { raw_geometry: JSON.parse(r["geometry"]) } : {}),
-      }));
+      const locations = rawLocations.map((r: any) => {
+        // CKAN Locations resource stores address as split components, NOT a single "Address" field.
+        // Build a normalized address string from the parts.
+        const addrParts = [
+          nullify(r["Street No"]),
+          nullify(r["Street No Suffix"]),
+          nullify(r["Street Name"]),
+          nullify(r["Street Type"]),
+          nullify(r["Street Direction"]),
+        ].filter(Boolean);
+        const builtAddress = addrParts.length > 0 ? addrParts.join(" ") : null;
+        return {
+          id: r["Location ID"] ?? r["locationid"] ?? r["_id"],
+          name: r["Location Name"] ?? r["Parent Asset Name"] ?? r["name"] ?? "",
+          address: builtAddress,
+          postal_code: nullify(r["Postal Code"]),
+          ward: r["Ward"] ? String(r["Ward"]) : null,
+          community_council: r["Community Council Area"] ?? null,
+          district: r["Community Council Area"] ?? null,
+          ...(r["geometry"] ? { raw_geometry: JSON.parse(r["geometry"]) } : {}),
+        };
+      });
       await batchUpsert(supabase, "locations", locations, UPSERT_CHUNK, "id");
       rowCounts.locations = locations.length;
     }

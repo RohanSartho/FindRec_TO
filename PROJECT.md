@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-03 (story: Phase 13 — sub_activity column, sub-activity filtering across venues/timetable/drop-in)
+> Last updated: 2026-03-04 (story: Phase 14 — address backfill from CKAN component fields)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -74,6 +74,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0006_coordinate_backfill_helper.sql` | Backfill PostGIS coords from raw_geometry |
 | `0007_dropin_unique_fix.sql` | Correct unique key: (course_id, location_id, first_date) |
 | `0011_sub_activity.sql` | Add sub_activity column to dropins + programs; fix Pickleball/Badminton/Tai Chi activity_type; backfill sub_activity via ILIKE |
+| `0012_backfill_addresses.sql` | Backfill address + postal_code for 1,922 locations from CKAN component fields (Street No / Street Name / Street Type / Street Direction) |
 
 ---
 
@@ -243,4 +244,5 @@ npx tsc --noEmit                               # Check for type errors
 | 11 | Custom time range filter (preset chips + From/To dropdowns, overlap logic), Toronto.ca official venue page links, Dennis R. Timbrell address + coords + indoor type corrections |
 | 12 | Venues browser redesign — /skating renamed /activities, shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
 | 13 | sub_activity column on dropins + programs (migration 0011); inferActivityType bug fix (Pickleball/Badminton/Tai Chi now correctly classified); SUB_ACTIVITY_MAP config; sub-activity dropdown in venues browser; sub-activity chips in DropInFilterPanel; sport+sub-activity dropdowns in Timetable; non-skating drop-in search mode |
+| 14 | Address backfill: discovered CKAN locations resource has split fields (Street No/Name/Type/Dir) not a single "Address" field. Script fetched 1,925 records, generated migration 0012 with 1,922 UPDATEs. Fixed ingest-ckan to build address from components going forward. [UX-003] updated to cover remaining gap via Google Places. |
 | Next | Vercel deploy, analytics, polish |

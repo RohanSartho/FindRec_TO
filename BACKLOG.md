@@ -35,20 +35,29 @@ a banner on next login saying "New season schedule is now available."
 
 ## 🗺️ Discovery & UX
 
-### [UX-003] Venue Hours of Operation (Google Places)
+### [UX-003] Google Places Enrichment — Hours + Address Gaps
 **Priority:** Medium
-**Context:** Users want to see a venue's hours of operation on the detail
-page (e.g. "Mon–Fri 6am–11pm"). Toronto's CKAN API and live JSON feeds
-contain no hours data — the only programmatic source is the Google Places API.
+**Context:** Users want to see venue hours of operation on the detail page
+(e.g. "Mon–Fri 6am–11pm"). Toronto's CKAN API has no hours data.
+Additionally, a small number of venues (~3) have no address even after the
+CKAN component-field backfill (migration 0012) — Google Places can fill both.
+
+**Background on addresses (already partially solved):**
+- Migration 0012 backfilled addresses for 1,922 of 1,925 CKAN locations by
+  constructing address from CKAN split fields (Street No / Street Name / etc.)
+  The ingest function was also fixed to do this going forward.
+- ~3 CKAN locations had no street data at all. Some DB locations (from rinks
+  datasets) may also be missing. Google Places can resolve these.
 
 **Technical approach:**
 - Add `google_place_id text` and `hours_json jsonb` columns to `locations` table (migration)
-- Create a one-time admin script (`scripts/fetch-google-hours.ts`) that:
-  1. Iterates all rink `location_ids` with a name + address
+- Create a one-time admin script (`scripts/fetch-google-places.mjs`) that:
+  1. Iterates all `location_ids` with a name + address (or name alone)
   2. Calls Google Places **Text Search** API to resolve `place_id`
-  3. Calls Google Places **Place Details** API (`fields=opening_hours`) to get hours
-  4. Upserts `google_place_id` and `hours_json` into `locations`
-- Venue detail page (`/skating/[asset_id]`) reads `hours_json` from the already-fetched `locations` row and renders a weekday hours table
+  3. Calls Google Places **Place Details** API (`fields=formatted_address,opening_hours`)
+  4. Upserts `google_place_id`, `hours_json`, and `address` (only where currently NULL)
+     into `locations`
+- Venue detail page reads `hours_json` and renders a weekday hours table
 - Fallback: if `hours_json` is null, show nothing (no empty section)
 
 **Prerequisites:**
@@ -61,8 +70,9 @@ contain no hours data — the only programmatic source is the Google Places API.
 **Acceptance Criteria:**
 - [ ] Migration adds `google_place_id` + `hours_json` to `locations`
 - [ ] Fetch script resolves place_id and stores hours for ≥ 80% of indoor rinks
+- [ ] Fetch script fills `address` for any location where it is still NULL
 - [ ] Venue detail page shows hours section when data is available
-- [ ] Outdoor rinks / pads with no Google listing are handled gracefully (section hidden)
+- [ ] Outdoor rinks / pads with no Google listing handled gracefully
 - [ ] `GOOGLE_PLACES_API_KEY` documented in README / env variable list
 
 **Effort:** M (migration + fetch script + UI section)
