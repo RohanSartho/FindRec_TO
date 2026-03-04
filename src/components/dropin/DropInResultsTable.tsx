@@ -4,6 +4,7 @@ import { formatTimeRange, formatAgeRange } from "@/lib/utils/timetable";
 import { MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
+import clsx from "clsx";
 
 interface Session {
   course_id: number;
@@ -88,13 +89,19 @@ export function DropInResultsTable({
         <div className="flex gap-3">
           <button
             onClick={expandAll}
-            className="text-xs text-blue-600 hover:underline"
+            className={clsx(
+              "text-xs hover:underline",
+              collapsedGroups.size > 0 ? "text-brand font-semibold" : "text-gray-400"
+            )}
           >
             Expand all
           </button>
           <button
             onClick={collapseAll}
-            className="text-xs text-gray-500 hover:underline"
+            className={clsx(
+              "text-xs hover:underline",
+              collapsedGroups.size === 0 ? "text-brand font-semibold" : "text-gray-400"
+            )}
           >
             Collapse all
           </button>
@@ -107,26 +114,26 @@ export function DropInResultsTable({
         return (
           <div
             key={group.program_type}
-            className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden"
+            className="bg-white border-2 border-brand rounded-2xl overflow-hidden"
           >
             {/* Group header */}
             <button
               onClick={() => toggleGroup(group.program_type)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left"
+              className="w-full flex items-center justify-between px-5 py-4 bg-brand hover:bg-brand-dark transition text-left"
             >
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-white">
                   {group.program_type}
                 </span>
-                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
                   {group.session_count} location
                   {group.session_count !== 1 ? "s" : ""}
                 </span>
               </div>
               {isCollapsed ? (
-                <ChevronDown size={16} className="text-gray-400 shrink-0" />
+                <ChevronDown size={16} className="text-gray-300 shrink-0" />
               ) : (
-                <ChevronUp size={16} className="text-gray-400 shrink-0" />
+                <ChevronUp size={16} className="text-gray-300 shrink-0" />
               )}
             </button>
 
@@ -157,14 +164,14 @@ export function DropInResultsTable({
                     {group.sessions.map((session, idx) => (
                       <tr
                         key={`${session.course_id}-${idx}`}
-                        className="hover:bg-blue-50/30 transition"
+                        className="hover:bg-brand/5 transition"
                       >
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {session.locations?.rinks?.[0]?.asset_id ? (
                               <Link
                                 href={`/skating/${session.locations.rinks[0].asset_id}`}
-                                className="font-medium text-gray-900 hover:text-blue-600 transition"
+                                className="font-medium text-gray-900 hover:text-brand transition"
                               >
                                 {session.locations?.name ?? "Unknown"}
                               </Link>
@@ -188,7 +195,7 @@ export function DropInResultsTable({
                                 href={`https://maps.google.com/?q=${encodeURIComponent(session.locations.address + ", Toronto, ON")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
+                                className="text-brand hover:underline"
                               >
                                 {session.locations.address}
                               </a>

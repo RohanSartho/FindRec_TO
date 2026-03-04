@@ -57,6 +57,7 @@ export type Database = {
           season_id: number | null
           section: string | null
           start_time: string | null
+          sub_activity: string | null
           updated_at: string | null
         }
         Insert: {
@@ -76,6 +77,7 @@ export type Database = {
           season_id?: number | null
           section?: string | null
           start_time?: string | null
+          sub_activity?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -95,6 +97,7 @@ export type Database = {
           season_id?: number | null
           section?: string | null
           start_time?: string | null
+          sub_activity?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -226,6 +229,7 @@ export type Database = {
           start_date: string | null
           start_time: string | null
           status: string | null
+          sub_activity: string | null
           updated_at: string | null
         }
         Insert: {
@@ -250,6 +254,7 @@ export type Database = {
           start_date?: string | null
           start_time?: string | null
           status?: string | null
+          sub_activity?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -274,6 +279,7 @@ export type Database = {
           start_date?: string | null
           start_time?: string | null
           status?: string | null
+          sub_activity?: string | null
           updated_at?: string | null
         }
         Relationships: [

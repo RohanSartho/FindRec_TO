@@ -28,7 +28,7 @@ export default function FavouritesPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-brand" />
       </div>
     );
   }
@@ -38,11 +38,11 @@ export default function FavouritesPage() {
       <>
         <div className="max-w-6xl mx-auto px-4 py-24 text-center">
           <Heart size={40} className="mx-auto text-gray-300 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your Favourites</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}>Your Favourites</h1>
           <p className="text-gray-500 mb-6">Sign in to save and view your favourite rinks.</p>
           <button
             onClick={() => setShowAuthModal(true)}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition"
+            className="px-6 py-2.5 bg-brand text-white rounded-xl text-sm font-medium hover:bg-brand-dark transition"
           >
             Sign in
           </button>
@@ -70,7 +70,7 @@ export default function FavouritesPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">My Favourites</h1>
+        <h1 className="text-3xl font-bold mb-1" style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}>My Favourites</h1>
         <p className="text-gray-500">
           {rinks.length > 0
             ? `${rinks.length} saved rink${rinks.length !== 1 ? "s" : ""}`
@@ -87,7 +87,7 @@ export default function FavouritesPage() {
           </p>
           <Link
             href="/skating"
-            className="text-blue-600 text-sm hover:underline"
+            className="text-brand text-sm hover:underline"
           >
             Browse skating rinks →
           </Link>

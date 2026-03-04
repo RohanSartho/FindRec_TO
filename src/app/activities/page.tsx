@@ -9,7 +9,7 @@ import {
   X, LayoutGrid, List, Search, Filter,
 } from "lucide-react";
 import {
-  DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS, ACTIVITY_FILTER_OPTIONS,
+  DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS, ACTIVITY_FILTER_OPTIONS, SUB_ACTIVITY_MAP,
 } from "@/lib/config/dropinFilters";
 import clsx from "clsx";
 
@@ -30,6 +30,7 @@ export default function VenuesPage() {
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState("");
   const [activityFilter, setActivityFilter] = useState("");
+  const [subActivityFilter, setSubActivityFilter] = useState("");
   const [rinkTypeFilter, setRinkTypeFilter] = useState<RinkTypeFilter>("");
   const [isNearMe, setIsNearMe] = useState(false);
   const [nearMeLat, setNearMeLat] = useState<number | null>(null);
@@ -38,9 +39,11 @@ export default function VenuesPage() {
   const [viewStyle, setViewStyle] = useState<ViewStyle>("grid");
   const [nameSearch, setNameSearch] = useState("");
 
-  // ── Drop-in state (unchanged from previous design) ────────────────────────
+  // ── Drop-in state ─────────────────────────────────────────────────────────
   const [dropinFilters, setDropinFilters] = useState<DropInFilters>({
     date: new Date().toISOString().split("T")[0],
+    activityType: "",
+    subActivity: "",
     selectedPrograms: [],
     district: "",
     lat: null,
@@ -64,6 +67,7 @@ export default function VenuesPage() {
     lng?: number;
     district?: string;
     activityType?: string;
+    subActivity?: string;
     rinkType?: string;
     radius?: number;
   }) => {
@@ -76,6 +80,7 @@ export default function VenuesPage() {
       if (options?.lat)          params.set("radius",        String(options?.radius ?? 5000));
       if (options?.district)     params.set("district",      options.district);
       if (options?.activityType) params.set("activity_type", options.activityType);
+      if (options?.subActivity)  params.set("sub_activity",  options.subActivity);
       if (options?.rinkType)     params.set("rink_type",     options.rinkType);
 
       const res = await fetch(`/api/venues?${params.toString()}`);
@@ -96,6 +101,7 @@ export default function VenuesPage() {
         lat: nearMeLat,
         lng: nearMeLng,
         activityType: activityFilter || undefined,
+        subActivity: subActivityFilter || undefined,
         rinkType: rinkTypeFilter || undefined,
         radius: parseInt(nearMeRadius) * 1000,
       });
@@ -103,16 +109,18 @@ export default function VenuesPage() {
       fetchVenues({
         district: district || undefined,
         activityType: activityFilter || undefined,
+        subActivity: subActivityFilter || undefined,
         rinkType: rinkTypeFilter || undefined,
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activityFilter, rinkTypeFilter, district, isNearMe, nearMeLat, nearMeLng, nearMeRadius, fetchVenues]);
+  }, [activityFilter, subActivityFilter, rinkTypeFilter, district, isNearMe, nearMeLat, nearMeLng, nearMeRadius, fetchVenues]);
 
-  // ── Activity filter handler — reset rink-type sub-filter on change ─────────
+  // ── Activity filter handler — reset sub-filters on parent change ────────────
   const handleActivityChange = (value: string) => {
     setActivityFilter(value);
-    setRinkTypeFilter(""); // rink-type only applies per activity
+    setSubActivityFilter(""); // reset sub-activity when parent changes
+    setRinkTypeFilter("");    // rink-type only applies to skating
   };
 
   // ── Drop-in search ────────────────────────────────────────────────────────
@@ -121,13 +129,23 @@ export default function VenuesPage() {
     try {
       const params = new URLSearchParams();
       params.set("date", dropinFilters.date);
-      if (dropinFilters.selectedPrograms.length > 0) {
-        const expanded = dropinFilters.selectedPrograms.flatMap((key) => {
-          const opt = DROPIN_FILTER_OPTIONS.find((o) => o.value === key);
-          return opt?.courseTitles ?? [];
-        });
-        if (expanded.length > 0) params.set("program_types", expanded.join(","));
+
+      const isNonSkating = dropinFilters.activityType && dropinFilters.activityType !== "skating";
+      if (isNonSkating) {
+        // Non-skating: pass activity_type + optional sub_activity
+        params.set("activity_type", dropinFilters.activityType);
+        if (dropinFilters.subActivity) params.set("sub_activity", dropinFilters.subActivity);
+      } else {
+        // Skating (default): use program_types chip logic
+        if (dropinFilters.selectedPrograms.length > 0) {
+          const expanded = dropinFilters.selectedPrograms.flatMap((key) => {
+            const opt = DROPIN_FILTER_OPTIONS.find((o) => o.value === key);
+            return opt?.courseTitles ?? [];
+          });
+          if (expanded.length > 0) params.set("program_types", expanded.join(","));
+        }
       }
+
       if (dropinFilters.isNearMe && dropinFilters.lat && dropinFilters.lng) {
         params.set("lat",       String(dropinFilters.lat));
         params.set("lng",       String(dropinFilters.lng));
@@ -165,6 +183,7 @@ export default function VenuesPage() {
         fetchVenues({
           lat, lng,
           activityType: activityFilter || undefined,
+          subActivity:  subActivityFilter || undefined,
           rinkType:     rinkTypeFilter || undefined,
           radius: parseInt(nearMeRadius) * 1000,
         });
@@ -181,9 +200,10 @@ export default function VenuesPage() {
     setNearMeLat(null);
     setNearMeLng(null);
     fetchVenues({
-      district:     district     || undefined,
-      activityType: activityFilter || undefined,
-      rinkType:     rinkTypeFilter || undefined,
+      district:     district          || undefined,
+      activityType: activityFilter    || undefined,
+      subActivity:  subActivityFilter || undefined,
+      rinkType:     rinkTypeFilter    || undefined,
     });
   };
 
@@ -192,8 +212,9 @@ export default function VenuesPage() {
     if (nearMeLat && nearMeLng) {
       fetchVenues({
         lat: nearMeLat, lng: nearMeLng,
-        activityType: activityFilter || undefined,
-        rinkType:     rinkTypeFilter || undefined,
+        activityType: activityFilter    || undefined,
+        subActivity:  subActivityFilter || undefined,
+        rinkType:     rinkTypeFilter    || undefined,
         radius: parseInt(radius) * 1000,
       });
     }
@@ -318,6 +339,23 @@ export default function VenuesPage() {
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+
+            {/* Sub-activity dropdown — visible when any specific activity is selected and has sub-options */}
+            {activityFilter && SUB_ACTIVITY_MAP[activityFilter] && (
+              <div className="relative">
+                <select
+                  value={subActivityFilter}
+                  onChange={(e) => setSubActivityFilter(e.target.value)}
+                  className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+                >
+                  <option value="">All {ACTIVITY_FILTER_OPTIONS.find(a => a.value === activityFilter)?.label}</option>
+                  {SUB_ACTIVITY_MAP[activityFilter].map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            )}
 
             {/* Indoor / Outdoor dropdown — only visible when skating is selected */}
             {showRinkTypeFilter && (

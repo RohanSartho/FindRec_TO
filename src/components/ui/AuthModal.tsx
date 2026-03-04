@@ -45,7 +45,7 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
         </button>
 
         {message && (
-          <p className="text-sm text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mb-4">
+          <p className="text-sm text-brand bg-brand/5 rounded-lg px-3 py-2 mb-4">
             {message}
           </p>
         )}
@@ -85,7 +85,7 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           />
           <input
             type="password"
@@ -93,13 +93,13 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
           />
           {error && <p className="text-xs text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-brand text-white rounded-xl py-2.5 text-sm font-medium hover:bg-brand-dark transition disabled:opacity-50"
           >
             {loading ? "Loading..." : mode === "signin" ? "Sign in" : "Create account"}
           </button>
@@ -109,7 +109,7 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="text-blue-600 hover:underline"
+            className="text-brand hover:underline"
           >
             {mode === "signin" ? "Sign up" : "Sign in"}
           </button>

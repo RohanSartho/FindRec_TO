@@ -55,7 +55,7 @@ export async function GET(
   // Fetch drop-ins — each row is a single-day session, filter by first_date
   let dropinQuery = supabase
     .from("dropins")
-    .select("course_id, course_title, section, day_of_week, first_date, last_date, start_time, end_time, min_age_months, max_age_months, activity_type")
+    .select("course_id, course_title, section, day_of_week, first_date, last_date, start_time, end_time, min_age_months, max_age_months, activity_type, sub_activity")
     .eq("location_id", locationId)
     .order("first_date", { ascending: true })
     .order("start_time", { ascending: true });
@@ -83,7 +83,7 @@ export async function GET(
   // Fetch registered programs
   let programQuery = supabase
     .from("programs")
-    .select("course_id, activity_title, course_title, section, days_of_week, start_date, end_date, start_time, end_time, min_age_months, max_age_months, activity_type, status, activity_url, program_category")
+    .select("course_id, activity_title, course_title, section, days_of_week, start_date, end_date, start_time, end_time, min_age_months, max_age_months, activity_type, sub_activity, status, activity_url, program_category")
     .eq("location_id", locationId)
     .lte("start_date", dateParam)
     .gte("end_date", dateParam)

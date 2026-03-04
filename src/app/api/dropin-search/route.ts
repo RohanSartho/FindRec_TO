@@ -59,8 +59,12 @@ export async function GET(req: NextRequest) {
   const radiusKm = parseFloat(searchParams.get("radius_km") ?? "5");
   const timeStart = searchParams.get("time_start"); // e.g. "12:00:00"
   const timeEnd = searchParams.get("time_end");     // e.g. "17:00:00"
+  // Non-skating: filter by activity_type + optional sub_activity
+  const activityTypeParam = searchParams.get("activity_type"); // e.g. "sports"
+  const subActivityParam  = searchParams.get("sub_activity");  // e.g. "Pickleball"
+  const isNonSkating = !!activityTypeParam && activityTypeParam !== "skating";
 
-  // Resolve which course titles to filter on
+  // Resolve which course titles to filter on (skating mode only)
   const activeTitles = programTypesParam
     ? programTypesParam.split(",").map((t) => t.trim())
     : SKATING_COURSE_TITLES;
@@ -91,52 +95,133 @@ export async function GET(req: NextRequest) {
     }
 
     // Step 2: Fetch drop-in sessions for the date
-    let query = supabase
-      .from("dropins")
-      .select(`
-        course_id,
-        course_title,
-        day_of_week,
-        first_date,
-        start_time,
-        end_time,
-        min_age_months,
-        max_age_months,
-        activity_type,
-        location_id,
-        locations (
-          name,
-          address,
-          district,
-          rinks (
-            asset_id,
-            rink_type
-          )
+    const SELECT_FIELDS = `
+      course_id,
+      course_title,
+      sub_activity,
+      day_of_week,
+      first_date,
+      start_time,
+      end_time,
+      min_age_months,
+      max_age_months,
+      activity_type,
+      location_id,
+      locations (
+        name,
+        address,
+        district,
+        rinks (
+          asset_id,
+          rink_type
         )
-      `)
-      .eq("first_date", date)
-      .in("course_title", activeTitles)
-      .order("start_time", { ascending: true });
+      )
+    `;
 
-    if (locationIds) query = query.in("location_id", locationIds);
-    // Overlap filter: session overlaps window when end_time > timeStart AND start_time < timeEnd
-    if (timeStart) query = query.gt("end_time", timeStart);
-    if (timeEnd)   query = query.lt("start_time", timeEnd);
+    let sessions: any[] = [];
 
-    const { data: sessions, error } = await query;
-    if (error) throw error;
+    if (isNonSkating) {
+      // ── Non-skating: filter by activity_type + optional sub_activity ────────
+      type ActivityTypeEnum = "skating" | "fitness" | "aquatics" | "arts" | "sports" | "other";
+      let q = supabase
+        .from("dropins")
+        .select(SELECT_FIELDS)
+        .eq("first_date", date)
+        .eq("activity_type", activityTypeParam as ActivityTypeEnum)
+        .order("start_time", { ascending: true });
+      if (subActivityParam) q = q.eq("sub_activity", subActivityParam);
+      if (locationIds) q = q.in("location_id", locationIds);
+      if (timeStart) q = q.gt("end_time", timeStart);
+      if (timeEnd)   q = q.lt("start_time", timeEnd);
+      const { data, error } = await q;
+      if (error) throw error;
+      sessions = data ?? [];
+    } else {
+      // ── Skating: filter by course_title list ─────────────────────────────────
+      let q = supabase
+        .from("dropins")
+        .select(SELECT_FIELDS)
+        .eq("first_date", date)
+        .in("course_title", activeTitles)
+        .order("start_time", { ascending: true });
+      if (locationIds) q = q.in("location_id", locationIds);
+      if (timeStart) q = q.gt("end_time", timeStart);
+      if (timeEnd)   q = q.lt("start_time", timeEnd);
+      const { data, error } = await q;
+      if (error) throw error;
+      sessions = data ?? [];
+    }
 
-    // Step 3: Group by course_title
+    // Step 3: Group
+    if (isNonSkating) {
+      // Group by sub_activity (falls back to course_title if null)
+      const groupMap = new Map<string, any[]>();
+      for (const session of sessions) {
+        const key: string = session.sub_activity ?? session.course_title ?? "Other";
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key)!.push(session);
+      }
+      const groups = Array.from(groupMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([title, items]) => ({
+          program_type: title,
+          session_count: items.length,
+          sessions: items.sort((a: any, b: any) =>
+            (a.start_time ?? "").localeCompare(b.start_time ?? "")
+          ),
+        }));
+      return NextResponse.json({ data: { groups, total: sessions.length, date } });
+    }
+
+    // Skating: group by course_title with explicit display order
     const groupMap = new Map<string, any[]>();
-    for (const session of sessions ?? []) {
+    for (const session of sessions) {
       const key: string = session.course_title ?? "Unknown";
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(session);
     }
 
-    // Sort groups by session count desc, then alpha
+    // Explicit display order for every known course title
+    const TITLE_ORDER: Record<string, number> = {
+      // ── Leisure Skate ──────────────────────────────────────────────────────
+      "Leisure Skate":                                          0,
+      "Leisure Skate (Unsupervised)":                          1,
+      "Leisure Skate: Older Adult":                            2,
+      "Leisure Skate: Older Adult (Unsupervised)":             3,
+      "Leisure Skate: Adult":                                  4,
+      "Leisure Skate: Adult (Unsupervised)":                   5,
+      "Leisure Skate (Pride Skate)":                           6,
+      "Leisure Skate: Youth":                                  7,
+      "Leisure Skate: Child with Caregiver":                   8,
+      "Leisure Skate: Child with Caregiver (unsupervised)":    9,
+      "Leisure Skate: Child with Caregiver (Unsupervised)":    9,
+      "Leisure Skate: Early Years with Caregiver":            10,
+      "Leisure Skate: Early Years with Caregiver (Unsupervised)": 11,
+      "Adapted Leisure Skate with Family":                    12,
+      // ── Shinny / Hockey ────────────────────────────────────────────────────
+      "Shinny":                                              100,
+      "Shinny (Unsupervised)":                               101,
+      "Shinny (Women)":                                      102,
+      "Shinny: Older Adult":                                 103,
+      "Shinny: Older Adult (Unsupervised)":                  104,
+      "Shinny: Older Adult (Women) (Unsupervised)":          105,
+      "Shinny: Adult":                                       106,
+      "Shinny: Adult (Unsupervised)":                        107,
+      "Shinny: Youth":                                       108,
+      "Shinny: Youth (Girls)":                               109,
+      "Shinny: Youth (Unsupervised)":                        110,
+      "Shinny: Child":                                       111,
+      "Shinny: Child (Girls)":                               112,
+      "Shinny: Child (Unsupervised)":                        113,
+      "Shinny: Child with Caregiver":                        114,
+      "Shinny: Child with Caregiver (unsupervised)":         115,
+      "Shinny: Child with Caregiver (Unsupervised)":         115,
+      "Shinny: Early Years with Caregiver":                  116,
+      "Shinny: Early Years with Caregiver (Unsupervised)":   117,
+    };
+
     const groups = Array.from(groupMap.entries())
-      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+      .sort((a, b) => (TITLE_ORDER[a[0]] ?? 999) - (TITLE_ORDER[b[0]] ?? 999))
       .map(([title, items]) => ({
         program_type: title,
         session_count: items.length,
@@ -148,7 +233,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       data: {
         groups,
-        total: sessions?.length ?? 0,
+        total: sessions.length,
         date,
       },
     });

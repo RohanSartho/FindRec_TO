@@ -6,15 +6,19 @@ import {
   DAY_LABELS, getTodayISO,
   formatTimeRange, formatAgeRange, compactTitle, activityTypeColor,
 } from "@/lib/utils/timetable";
+import { SUB_ACTIVITY_MAP } from "@/lib/config/dropinFilters";
+import clsx from "clsx";
 
 type View = "day" | "week";
-type SportFilter = "skating" | "aquatics" | "fitness" | "all";
+type SportFilter = "skating" | "aquatics" | "fitness" | "arts" | "sports" | "all";
 
 const SPORT_OPTIONS: { value: SportFilter; label: string }[] = [
-  { value: "skating", label: "Skating" },
+  { value: "all",      label: "All" },
+  { value: "skating",  label: "Skating" },
   { value: "aquatics", label: "Aquatics" },
-  { value: "fitness", label: "Fitness" },
-  { value: "all", label: "All Sports" },
+  { value: "fitness",  label: "Fitness" },
+  { value: "arts",     label: "Arts" },
+  { value: "sports",   label: "Sports" },
 ];
 
 interface DropIn {
@@ -29,6 +33,7 @@ interface DropIn {
   min_age_months: number | null;
   max_age_months: number | null;
   activity_type: string;
+  sub_activity: string | null;
 }
 
 interface Program {
@@ -43,6 +48,7 @@ interface Program {
   min_age_months: number | null;
   max_age_months: number | null;
   activity_type: string;
+  sub_activity: string | null;
   status: string | null;
   activity_url: string | null;
   program_category: string | null;
@@ -50,7 +56,7 @@ interface Program {
 
 function matchesSport(activityType: string, filter: SportFilter): boolean {
   if (filter === "all") return true;
-  return activityType?.toLowerCase().includes(filter);
+  return activityType?.toLowerCase() === filter;
 }
 
 export function Timetable({
@@ -67,6 +73,7 @@ export function Timetable({
   const [view, setView] = useState<View>("day");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [sportFilter, setSportFilter] = useState<SportFilter>(defaultSportFilter);
+  const [subFilter, setSubFilter] = useState("");
   const [dropins, setDropins] = useState<DropIn[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,9 +98,16 @@ export function Timetable({
       .finally(() => setLoading(false));
   }, [assetId, locationId, view, selectedDate]);
 
-  // Apply sport filter
-  const filteredDropins = dropins.filter((d) => matchesSport(d.activity_type, sportFilter));
-  const filteredPrograms = programs.filter((p) => matchesSport(p.activity_type, sportFilter));
+  // Apply sport + sub-activity filter
+  const filteredDropins = dropins
+    .filter((d) => matchesSport(d.activity_type, sportFilter))
+    .filter((d) => !subFilter || d.sub_activity === subFilter);
+  const filteredPrograms = programs
+    .filter((p) => matchesSport(p.activity_type, sportFilter))
+    .filter((p) => !subFilter || p.sub_activity === subFilter);
+
+  // Sub-activity options for the current sport filter
+  const subOptions = sportFilter !== "all" ? (SUB_ACTIVITY_MAP[sportFilter] ?? []) : [];
 
   // Group by actual date for week view
   const dropinsByDate = filteredDropins.reduce((acc, d) => {
@@ -140,20 +154,32 @@ export function Timetable({
         <div className="relative">
           <select
             value={sportFilter}
-            onChange={(e) => setSportFilter(e.target.value as SportFilter)}
+            onChange={(e) => { setSportFilter(e.target.value as SportFilter); setSubFilter(""); }}
             className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
           >
             {SPORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown
-            size={14}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-          />
+          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
+
+        {/* Sub-activity filter — appears when a specific activity type is selected */}
+        {subOptions.length > 0 && (
+          <div className="relative">
+            <select
+              value={subFilter}
+              onChange={(e) => setSubFilter(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+            >
+              <option value="">All {SPORT_OPTIONS.find(o => o.value === sportFilter)?.label}</option>
+              {subOptions.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+        )}
       </div>
 
       {/* Content */}

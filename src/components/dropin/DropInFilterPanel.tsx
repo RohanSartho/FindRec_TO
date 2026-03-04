@@ -6,12 +6,16 @@ import {
   DROPIN_FILTER_OPTIONS,
   DISTRICTS,
   RADIUS_OPTIONS,
+  ACTIVITY_FILTER_OPTIONS,
+  SUB_ACTIVITY_MAP,
 } from "@/lib/config/dropinFilters";
 import clsx from "clsx";
 
 export interface DropInFilters {
   date: string;
-  selectedPrograms: string[]; // chip key values (e.g. "leisure-adult")
+  activityType: string;       // "" | "skating" | "sports" | "aquatics" | "fitness" | "arts"
+  subActivity: string;        // "" = all sub-activities within activityType
+  selectedPrograms: string[]; // chip key values — used in skating mode only
   district: string;
   lat: number | null;
   lng: number | null;
@@ -166,7 +170,7 @@ export function DropInFilterPanel({
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-sm p-5 space-y-5">
+    <div className="bg-white border-2 border-brand rounded-2xl shadow-sm p-5 space-y-5">
 
       {/* ── Date picker ─────────────────────────────────────────────────────── */}
       <div>
@@ -177,21 +181,18 @@ export function DropInFilterPanel({
           type="date"
           value={filters.date}
           onChange={(e) => onChange({ ...filters, date: e.target.value })}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
         />
       </div>
 
       {/* ── Time filter — preset dropdown + custom range, mutually exclusive ── */}
-      {/*   Both sides remain clickable at all times so the user can switch     */}
-      {/*   modes freely. opacity-40 signals the inactive side visually but     */}
-      {/*   pointer-events are NOT blocked — clicking either side activates it. */}
       <div>
         <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
           Time of Day
         </label>
         <div className="flex items-start gap-3">
 
-          {/* Preset dropdown — greyed (but still clickable) when range is active */}
+          {/* Preset dropdown */}
           <div className={clsx(
             "relative transition-opacity shrink-0",
             timeMode === "range" && "opacity-40"
@@ -199,7 +200,7 @@ export function DropInFilterPanel({
             <select
               value={presetKey}
               onChange={(e) => handlePresetChange(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
             >
               <option value="">All day</option>
               <option value="morning">Morning  6–12</option>
@@ -214,7 +215,7 @@ export function DropInFilterPanel({
 
           <span className="text-xs text-gray-400 shrink-0 mt-2.5">or</span>
 
-          {/* Custom From–To stacked vertically — greyed (but still clickable) when preset is active */}
+          {/* Custom From–To stacked vertically */}
           <div className={clsx(
             "flex flex-col gap-1.5 transition-opacity",
             timeMode === "preset" && "opacity-40"
@@ -223,7 +224,7 @@ export function DropInFilterPanel({
               <select
                 value={filters.timeFrom}
                 onChange={(e) => handleFromChange(e.target.value)}
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
               >
                 <option value="">From</option>
                 {TIME_OPTIONS.map((t) => (
@@ -236,10 +237,9 @@ export function DropInFilterPanel({
               <select
                 value={filters.timeTo}
                 onChange={(e) => handleToChange(e.target.value)}
-                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
               >
                 <option value="">To</option>
-                {/* Only show times strictly after the selected From */}
                 {TIME_OPTIONS.filter((t) => !filters.timeFrom || t.value > filters.timeFrom).map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
@@ -257,10 +257,10 @@ export function DropInFilterPanel({
         </label>
         <div className="flex gap-2 items-center">
           {filters.isNearMe ? (
-            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-sm text-blue-700 shrink-0">
+            <div className="flex items-center gap-1.5 bg-brand/10 border border-brand/40 rounded-xl px-3 py-2 text-sm text-brand shrink-0">
               <MapPin size={13} />
               <span>Near Me</span>
-              <button onClick={clearNearMe} className="ml-1 hover:text-blue-900">
+              <button onClick={clearNearMe} className="ml-1 hover:text-brand-dark">
                 <X size={13} />
               </button>
             </div>
@@ -268,7 +268,7 @@ export function DropInFilterPanel({
             <button
               onClick={handleNearMe}
               disabled={geoLoading}
-              className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 transition shrink-0"
+              className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-600 hover:border-brand hover:text-brand transition shrink-0"
             >
               {geoLoading ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -284,7 +284,7 @@ export function DropInFilterPanel({
               <select
                 value={filters.district}
                 onChange={(e) => onChange({ ...filters, district: e.target.value })}
-                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
               >
                 {DISTRICTS.map((d) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
@@ -299,7 +299,7 @@ export function DropInFilterPanel({
               <select
                 value={filters.radiusKm}
                 onChange={(e) => onChange({ ...filters, radiusKm: e.target.value })}
-                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none w-full bg-white border border-gray-200 rounded-xl px-3 py-2 pr-7 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
               >
                 {RADIUS_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -311,18 +311,76 @@ export function DropInFilterPanel({
         </div>
       </div>
 
+      {/* ── Activity type filter ─────────────────────────────────────────────── */}
+      <div>
+        <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide block mb-2">
+          Activity
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {/* "Skating" is the default (empty string = skating) */}
+          {[{ value: "skating", label: "Skating" }, ...ACTIVITY_FILTER_OPTIONS.filter(a => a.value && a.value !== "skating")].map((a) => {
+            const active = (filters.activityType || "skating") === a.value;
+            return (
+              <button
+                key={a.value}
+                onClick={() => onChange({ ...filters, activityType: a.value === "skating" ? "" : a.value, subActivity: "" })}
+                className={clsx(
+                  "px-3 py-1.5 rounded-xl text-sm font-medium border transition",
+                  active
+                    ? "bg-brand text-white border-brand"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-brand/60"
+                )}
+              >
+                {a.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sub-activity chips — shown when a non-skating activity is active and has sub-options */}
+        {filters.activityType && SUB_ACTIVITY_MAP[filters.activityType] && (
+          <div className="flex flex-wrap gap-1.5 mt-2 pl-1">
+            <button
+              onClick={() => onChange({ ...filters, subActivity: "" })}
+              className={clsx(
+                "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
+                !filters.subActivity
+                  ? "bg-brand/10 text-brand border-brand/40"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-brand/60"
+              )}
+            >
+              All
+            </button>
+            {SUB_ACTIVITY_MAP[filters.activityType].map((s) => (
+              <button
+                key={s.value}
+                onClick={() => onChange({ ...filters, subActivity: s.value })}
+                className={clsx(
+                  "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
+                  filters.subActivity === s.value
+                    ? "bg-brand text-white border-brand"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-brand/60"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ── Search button ────────────────────────────────────────────────────── */}
       <button
         onClick={onSearch}
         disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full bg-brand text-white rounded-xl py-2.5 text-sm font-medium hover:bg-brand-dark transition disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {loading && <Loader2 size={14} className="animate-spin" />}
         {loading ? "Searching..." : "Find Drop-ins"}
       </button>
 
-      {/* ── Program type filter ──────────────────────────────────────────────── */}
-      <div>
+      {/* ── Program type filter (skating only) ────────────────────────────────── */}
+      {filters.activityType && filters.activityType !== "skating" ? null : <div>
         <div className="flex items-center justify-between mb-3">
           <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
             Program Type
@@ -338,7 +396,7 @@ export function DropInFilterPanel({
                 className={clsx(
                   "px-2.5 py-1 transition",
                   filters.selectedPrograms.length === DROPIN_FILTER_OPTIONS.length
-                    ? "bg-blue-600 text-white"
+                    ? "bg-brand text-white"
                     : "bg-white text-gray-500 hover:bg-gray-50"
                 )}
               >
@@ -349,7 +407,7 @@ export function DropInFilterPanel({
                 className={clsx(
                   "px-2.5 py-1 border-l border-gray-200 transition",
                   filters.selectedPrograms.length === 0
-                    ? "bg-blue-600 text-white"
+                    ? "bg-brand text-white"
                     : "bg-white text-gray-500 hover:bg-gray-50"
                 )}
               >
@@ -357,12 +415,15 @@ export function DropInFilterPanel({
               </button>
             </div>
 
-            {/* Funnel icon + count (0 – total chips) */}
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <Filter size={12} className="text-gray-400" />
-              <span className="font-medium tabular-nums">
-                {filters.selectedPrograms.length}/{DROPIN_FILTER_OPTIONS.length}
-              </span>
+            {/* Funnel icon + count — highlighted when a filter is active */}
+            <div className={clsx(
+              "flex items-center gap-1 text-xs font-medium tabular-nums",
+              filters.selectedPrograms.length < DROPIN_FILTER_OPTIONS.length && filters.selectedPrograms.length > 0
+                ? "text-brand"
+                : "text-gray-400"
+            )}>
+              <Filter size={12} className="shrink-0" />
+              <span>{filters.selectedPrograms.length}/{DROPIN_FILTER_OPTIONS.length}</span>
             </div>
           </div>
         </div>
@@ -376,26 +437,26 @@ export function DropInFilterPanel({
             const isExpanded = expandedGroups[group.key] ?? true;
 
             return (
-              <div key={group.key} className="border border-gray-100 rounded-xl overflow-hidden">
+              <div key={group.key} className="border-2 border-brand rounded-xl overflow-hidden">
                 {/* Group header — bold, collapsible */}
                 <div
                   role="button"
                   tabIndex={0}
                   onClick={() => toggleGroup(group.key)}
                   onKeyDown={(e) => e.key === "Enter" && toggleGroup(group.key)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-brand hover:bg-brand-dark transition cursor-pointer"
                 >
-                  <span className="text-sm font-bold text-gray-800">{group.label}</span>
+                  <span className="text-sm font-bold text-white">{group.label}</span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={(e) => { e.stopPropagation(); selectAllInGroup(group.key); }}
-                      className="text-xs text-blue-500 hover:underline"
+                      className="text-xs text-white font-semibold hover:underline"
                     >
                       {allSelected ? "Deselect all" : "Select all"}
                     </button>
                     {isExpanded
-                      ? <ChevronUp size={14} className="text-gray-400 shrink-0" />
-                      : <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                      ? <ChevronUp size={16} strokeWidth={2.5} className="text-white shrink-0" />
+                      : <ChevronDown size={16} strokeWidth={2.5} className="text-white shrink-0" />
                     }
                   </div>
                 </div>
@@ -412,14 +473,14 @@ export function DropInFilterPanel({
                           className={clsx(
                             "flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-sm transition",
                             active
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
+                              ? "bg-brand text-white border-brand"
+                              : "bg-white text-gray-700 border-gray-200 hover:border-brand/60"
                           )}
                         >
                           <span className="font-medium text-left leading-tight">{opt.label}</span>
                           <span className={clsx(
                             "ml-2 text-xs font-semibold shrink-0",
-                            active ? "text-blue-200" : "text-gray-400"
+                            active ? "text-white/70" : "text-gray-400"
                           )}>
                             {opt.ageLabel}
                           </span>
@@ -432,7 +493,7 @@ export function DropInFilterPanel({
             );
           })}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

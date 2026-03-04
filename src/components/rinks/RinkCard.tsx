@@ -49,7 +49,7 @@ export function RinkCard({ rink }: RinkCardProps) {
 
   return (
     <>
-      <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition p-4 flex flex-col gap-3">
+      <div className="relative bg-white rounded-2xl border-2 border-brand hover:shadow-md transition p-4 flex flex-col gap-3">
         {/* Full-card link overlay — z-10 captures clicks on all non-interactive areas */}
         <Link
           href={`/skating/${rink.asset_id}`}
@@ -64,7 +64,7 @@ export function RinkCard({ rink }: RinkCardProps) {
             <div className={clsx(
               "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium mb-1.5",
               rink.rink_type === "indoor"
-                ? "bg-blue-100 text-blue-700"
+                ? "bg-brand/10 text-brand"
                 : "bg-green-100 text-green-700"
             )}>
               {rink.rink_type === "indoor"

@@ -48,7 +48,7 @@ export function RinkListItem({ rink }: RinkListItemProps) {
 
   return (
     <>
-      <div className="relative flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 hover:shadow-sm transition">
+      <div className="relative flex items-center gap-3 bg-white border-2 border-brand rounded-xl px-4 py-3 hover:shadow-sm transition">
         <Link
           href={`/skating/${rink.asset_id}`}
           className="absolute inset-0 rounded-xl z-10"
@@ -58,10 +58,10 @@ export function RinkListItem({ rink }: RinkListItemProps) {
         {/* Type icon */}
         <div className={clsx(
           "shrink-0 p-2 rounded-full",
-          rink.rink_type === "indoor" ? "bg-blue-100" : "bg-green-100"
+          rink.rink_type === "indoor" ? "bg-brand/10" : "bg-green-100"
         )}>
           {rink.rink_type === "indoor"
-            ? <Building2 size={15} className="text-blue-600" />
+            ? <Building2 size={15} className="text-brand" />
             : <TreePine size={15} className="text-green-600" />
           }
         </div>

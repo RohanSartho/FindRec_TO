@@ -40,30 +40,34 @@ async function fetchAllFacilities(
   return results;
 }
 
-/** Get distinct location_ids that have sessions for a given activity_type. */
+/** Get distinct location_ids that have sessions for a given activity_type (and optional sub_activity). */
 async function locationIdsForActivity(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  activityType: string
+  activityType: string,
+  subActivity?: string
 ): Promise<Set<number>> {
   const ids = new Set<number>();
 
   type ActivityTypeEnum = "skating" | "fitness" | "aquatics" | "arts" | "sports" | "other";
   const enumVal = activityType as ActivityTypeEnum;
 
-  const [dropinRes, programRes] = await Promise.all([
-    supabase
-      .from("dropins")
-      .select("location_id")
-      .eq("activity_type", enumVal)
-      .not("location_id", "is", null)
-      .limit(5000),
-    supabase
-      .from("programs")
-      .select("location_id")
-      .eq("activity_type", enumVal)
-      .not("location_id", "is", null)
-      .limit(5000),
-  ]);
+  let dropinQ = supabase
+    .from("dropins")
+    .select("location_id")
+    .eq("activity_type", enumVal)
+    .not("location_id", "is", null)
+    .limit(5000);
+  if (subActivity) dropinQ = dropinQ.eq("sub_activity", subActivity);
+
+  let programQ = supabase
+    .from("programs")
+    .select("location_id")
+    .eq("activity_type", enumVal)
+    .not("location_id", "is", null)
+    .limit(5000);
+  if (subActivity) programQ = programQ.eq("sub_activity", subActivity);
+
+  const [dropinRes, programRes] = await Promise.all([dropinQ, programQ]);
 
   for (const r of dropinRes.data ?? [])  if (r.location_id) ids.add(r.location_id);
   for (const r of programRes.data ?? []) if (r.location_id) ids.add(r.location_id);
@@ -76,6 +80,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
 
   const activityType = searchParams.get("activity_type"); // e.g. "fitness"
+  const subActivity  = searchParams.get("sub_activity") ?? undefined; // e.g. "Pickleball"
   const rinkType = searchParams.get("rink_type");         // "indoor" | "outdoor"
   const district = searchParams.get("district");
   const lat = searchParams.get("lat");
@@ -116,7 +121,7 @@ export async function GET(req: NextRequest) {
 
     } else if (activityType) {
       // ── Other activities: use dropins + programs (reflects real schedules) ──
-      const ids = await locationIdsForActivity(supabase, activityType);
+      const ids = await locationIdsForActivity(supabase, activityType, subActivity);
       locationIds = Array.from(ids);
 
       // Seed activityMap so chips render; also add "skating" for rink venues

@@ -165,3 +165,64 @@ export const ACTIVITY_FILTER_OPTIONS = [
   { value: "arts", label: "Arts" },
   { value: "sports", label: "Sports" },
 ];
+
+export interface SubActivityOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Sub-activity options grouped by parent activity_type.
+ * Values match the normalized sub_activity column in the DB.
+ */
+export const SUB_ACTIVITY_MAP: Record<string, SubActivityOption[]> = {
+  skating: [
+    { value: "Public Skating",  label: "Public Skating" },
+    { value: "Hockey",          label: "Hockey / Shinny" },
+    { value: "Figure Skating",  label: "Figure Skating" },
+    { value: "Speed Skating",   label: "Speed Skating" },
+    { value: "Ringette",        label: "Ringette" },
+    { value: "Broomball",       label: "Broomball" },
+  ],
+  aquatics: [
+    { value: "Leisure Swim",    label: "Leisure Swim" },
+    { value: "Lane Swimming",   label: "Lane Swimming" },
+    { value: "Aquafit",         label: "Aquafit" },
+    { value: "Swim Lessons",    label: "Swim Lessons" },
+    { value: "Parent & Tot Swim", label: "Parent & Tot Swim" },
+    { value: "Diving",          label: "Diving" },
+    { value: "Water Polo",      label: "Water Polo" },
+  ],
+  fitness: [
+    { value: "Yoga",      label: "Yoga" },
+    { value: "Pilates",   label: "Pilates" },
+    { value: "Zumba",     label: "Zumba" },
+    { value: "Cardio",    label: "Cardio / Bootcamp" },
+    { value: "Tai Chi",   label: "Tai Chi" },
+  ],
+  arts: [
+    { value: "Dance",    label: "Dance" },
+    { value: "Painting", label: "Painting / Drawing" },
+    { value: "Pottery",  label: "Pottery / Ceramics" },
+    { value: "Crafts",   label: "Crafts" },
+    { value: "Music",    label: "Music" },
+    { value: "Drama",    label: "Drama / Theatre" },
+  ],
+  sports: [
+    { value: "Pickleball",   label: "Pickleball" },
+    { value: "Soccer",       label: "Soccer" },
+    { value: "Basketball",   label: "Basketball" },
+    { value: "Badminton",    label: "Badminton" },
+    { value: "Volleyball",   label: "Volleyball" },
+    { value: "Tennis",       label: "Tennis" },
+    { value: "Baseball",     label: "Baseball / Softball" },
+    { value: "Squash",       label: "Squash" },
+    { value: "Floor Hockey", label: "Floor Hockey" },
+    { value: "Dodgeball",    label: "Dodgeball" },
+    { value: "Table Tennis", label: "Table Tennis" },
+    { value: "Lacrosse",     label: "Lacrosse" },
+    { value: "Cricket",      label: "Cricket" },
+    { value: "Ringette",     label: "Ringette" },
+    { value: "Broomball",    label: "Broomball" },
+  ],
+};

@@ -49,12 +49,70 @@ function parseTime(hour: number | string, min: number | string): string | null {
 
 function inferActivityType(category: string, title: string): string {
   const val = `${category} ${title}`.toLowerCase();
-  if (val.includes("skat") || val.includes("hockey") || val.includes("ice")) return "skating";
-  if (val.includes("swim") || val.includes("pool") || val.includes("aqua")) return "aquatics";
-  if (val.includes("fitness") || val.includes("yoga") || val.includes("cardio") || val.includes("pilates")) return "fitness";
-  if (val.includes("art") || val.includes("paint") || val.includes("craft") || val.includes("music") || val.includes("dance")) return "arts";
-  if (val.includes("sport") || val.includes("basketball") || val.includes("tennis") || val.includes("soccer") || val.includes("baseball")) return "sports";
+  if (val.includes("skat") || val.includes("hockey") || val.includes("shinny") || val.includes("ice rink") || val.includes("figure skating") || val.includes("speed skate") || val.includes("ringette") || val.includes("broomball")) return "skating";
+  if (val.includes("swim") || val.includes("pool") || val.includes("aqua") || val.includes("diving") || val.includes("water polo")) return "aquatics";
+  if (val.includes("fitness") || val.includes("yoga") || val.includes("cardio") || val.includes("pilates") || val.includes("zumba") || val.includes("tai chi") || val.includes("taichi") || val.includes("bootcamp") || val.includes("boot camp") || val.includes("weight training") || val.includes("stretching")) return "fitness";
+  if (val.includes("art") || val.includes("paint") || val.includes("craft") || val.includes("music") || val.includes("dance") || val.includes("ballet") || val.includes("drama") || val.includes("theatre") || val.includes("theater") || val.includes("pottery") || val.includes("ceramics")) return "arts";
+  if (val.includes("sport") || val.includes("basketball") || val.includes("tennis") || val.includes("soccer") || val.includes("baseball") || val.includes("pickleball") || val.includes("badminton") || val.includes("volleyball") || val.includes("squash") || val.includes("dodgeball") || val.includes("floor hockey") || val.includes("lacrosse") || val.includes("cricket") || val.includes("softball") || val.includes("table tennis") || val.includes("ping pong")) return "sports";
   return "other";
+}
+
+function inferSubActivity(activityType: string, activityTitle: string, courseTitle: string): string | null {
+  const val = `${activityTitle} ${courseTitle}`.toLowerCase();
+
+  if (activityType === "skating") {
+    if (val.includes("hockey") || val.includes("shinny") || val.includes("stick")) return "Hockey";
+    if (val.includes("figure") || val.includes("learn to skate")) return "Figure Skating";
+    if (val.includes("speed skate") || val.includes("speed skating")) return "Speed Skating";
+    if (val.includes("ringette")) return "Ringette";
+    if (val.includes("broomball")) return "Broomball";
+    return "Public Skating";
+  }
+  if (activityType === "aquatics") {
+    if (val.includes("aquafit") || val.includes("aqua fit") || val.includes("water aerobic")) return "Aquafit";
+    if (val.includes("lesson") || val.includes("learn to swim")) return "Swim Lessons";
+    if (val.includes("lane") || val.includes("lap") || val.includes("length")) return "Lane Swimming";
+    if (val.includes("dive") || val.includes("diving")) return "Diving";
+    if (val.includes("tot") || val.includes("parent & tot")) return "Parent & Tot Swim";
+    if (val.includes("water polo")) return "Water Polo";
+    return "Leisure Swim";
+  }
+  if (activityType === "fitness") {
+    if (val.includes("yoga")) return "Yoga";
+    if (val.includes("pilates")) return "Pilates";
+    if (val.includes("zumba")) return "Zumba";
+    if (val.includes("cardio") || val.includes("bootcamp") || val.includes("boot camp") || val.includes("hiit")) return "Cardio";
+    if (val.includes("tai chi") || val.includes("taichi")) return "Tai Chi";
+    return null;
+  }
+  if (activityType === "arts") {
+    if (val.includes("dance") || val.includes("ballet") || val.includes("hip hop") || val.includes("salsa") || val.includes("ballroom")) return "Dance";
+    if (val.includes("paint") || val.includes("draw") || val.includes("sketch") || val.includes("watercolour") || val.includes("watercolor")) return "Painting";
+    if (val.includes("potter") || val.includes("ceramics") || val.includes("clay")) return "Pottery";
+    if (val.includes("craft") || val.includes("knit") || val.includes("sew")) return "Crafts";
+    if (val.includes("music") || val.includes("guitar") || val.includes("piano") || val.includes("choir") || val.includes("sing")) return "Music";
+    if (val.includes("drama") || val.includes("theatre") || val.includes("theater")) return "Drama";
+    return null;
+  }
+  if (activityType === "sports") {
+    if (val.includes("pickleball")) return "Pickleball";
+    if (val.includes("soccer") || val.includes(" football")) return "Soccer";
+    if (val.includes("basketball")) return "Basketball";
+    if (val.includes("badminton")) return "Badminton";
+    if (val.includes("volleyball")) return "Volleyball";
+    if (val.includes("table tennis") || val.includes("ping pong")) return "Table Tennis";
+    if (val.includes("tennis")) return "Tennis";
+    if (val.includes("baseball") || val.includes("softball")) return "Baseball";
+    if (val.includes("squash")) return "Squash";
+    if (val.includes("floor hockey")) return "Floor Hockey";
+    if (val.includes("dodgeball")) return "Dodgeball";
+    if (val.includes("lacrosse")) return "Lacrosse";
+    if (val.includes("cricket")) return "Cricket";
+    if (val.includes("ringette")) return "Ringette";
+    if (val.includes("broomball")) return "Broomball";
+    return null;
+  }
+  return null;
 }
 
 /** Fetches all pages from a CKAN datastore resource, calling processBatch for each page. */
@@ -264,10 +322,13 @@ Deno.serve(async (_req) => {
           const { start_date, end_date } = parseFromTo(nullify(r["From To"]) ?? "");
           const minAge = nullify(r["Min Age"]);
           const maxAge = nullify(r["Max Age"]);
+          const at = inferActivityType(nullify(r["Program Category"]) ?? "", nullify(r["Activity Title"]) ?? "");
+          const actTitle = nullify(r["Activity Title"]) ?? "";
+          const crsTitle = nullify(r["Course Title"]) ?? "";
           return {
             course_id: Number(r["Course_ID"]),
             location_id: Number(r["Location ID"]),
-            activity_type: inferActivityType(nullify(r["Program Category"]) ?? "", nullify(r["Activity Title"]) ?? ""),
+            activity_type: at,
             activity_title: nullify(r["Activity Title"]),
             course_title: nullify(r["Course Title"]),
             section: nullify(r["Section"]),
@@ -282,6 +343,7 @@ Deno.serve(async (_req) => {
             status: nullify(r["Status / Information"]),
             activity_url: nullify(r["Activity URL"]),
             program_category: nullify(r["Program Category"]),
+            sub_activity: inferSubActivity(at, actTitle, crsTitle),
             metadata: {},
           };
         });
@@ -303,10 +365,12 @@ Deno.serve(async (_req) => {
           const courseId = nullify(r["Course_ID"]);
           const ageMin = nullify(r["Age Min"]);
           const ageMax = nullify(r["Age Max"]);
+          const crsTitle = nullify(r["Course Title"]) ?? "";
+          const dropinAt = inferActivityType("", crsTitle);
           return {
             course_id: courseId ? Number(courseId) : null,
             location_id: Number(r["Location ID"]),
-            activity_type: inferActivityType("", nullify(r["Course Title"]) ?? ""),
+            activity_type: dropinAt,
             course_title: nullify(r["Course Title"]),
             section: nullify(r["Section"]),
             day_of_week: nullify(r["DayOftheWeek"]),
@@ -316,6 +380,7 @@ Deno.serve(async (_req) => {
             end_time: parseTime(r["End Hour"] ?? 0, r["End Min"] ?? 0),
             min_age_months: ageMin ? Number(ageMin) * 12 : null,
             max_age_months: ageMax ? Number(ageMax) * 12 : null,
+            sub_activity: inferSubActivity(dropinAt, "", crsTitle),
             metadata: {},
           };
         });
