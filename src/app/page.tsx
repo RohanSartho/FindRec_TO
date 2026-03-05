@@ -89,15 +89,16 @@ export default function HomePage() {
             </svg>
             Search Activities
           </Link>
-          <button
+          <Link
+            href="/activities?view=map"
             className="flex items-center gap-2.5 bg-transparent text-brand px-7 py-4 rounded-full text-base font-semibold border-2 border-brand hover:bg-brand hover:text-white transition-all"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
-              <path d="M6 9h6M9 6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M9 2C6.24 2 4 4.24 4 7c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="2" fill="none" strokeLinejoin="round" />
+              <circle cx="9" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.5" />
             </svg>
             View Map
-          </button>
+          </Link>
         </div>
 
         {/* Feature pills */}

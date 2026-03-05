@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { VenueCard, Venue } from "@/components/venues/VenueCard";
 import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilterPanel";
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
@@ -23,7 +24,8 @@ type RinkTypeFilter = "" | "indoor" | "outdoor";
 // Activities that expose the Indoor / Outdoor sub-filter
 const RINK_FILTER_ACTIVITIES = ["skating"];
 
-export default function VenuesPage() {
+function VenuesPageInner() {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<PageMode>("venues");
 
   // ── Venue finder state ────────────────────────────────────────────────────
@@ -39,7 +41,10 @@ export default function VenuesPage() {
   const [nearMeLat, setNearMeLat] = useState<number | null>(null);
   const [nearMeLng, setNearMeLng] = useState<number | null>(null);
   const [nearMeRadius, setNearMeRadius] = useState("5");
-  const [viewStyle, setViewStyle] = useState<ViewStyle>("grid");
+  const [viewStyle, setViewStyle] = useState<ViewStyle>(() => {
+    const v = searchParams.get("view");
+    return v === "map" || v === "list" || v === "grid" ? v : "grid";
+  });
   const [nameSearch, setNameSearch] = useState("");
 
   // ── Drop-in state ─────────────────────────────────────────────────────────
@@ -542,5 +547,13 @@ export default function VenuesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function VenuesPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <VenuesPageInner />
+    </React.Suspense>
   );
 }
