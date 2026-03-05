@@ -1,20 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, ExternalLink } from "lucide-react";
+import { ArrowLeft, MapPin, ExternalLink, House, TreePine } from "lucide-react";
 import { Timetable } from "@/components/rinks/Timetable";
+
+type SportFilter = "skating" | "aquatics" | "fitness" | "arts" | "sports" | "all";
+const VALID_SPORT_FILTERS: SportFilter[] = ["skating", "aquatics", "fitness", "arts", "sports", "all"];
 
 interface PageProps {
   params: Promise<{ location_id: string }>;
+  searchParams: Promise<{ activity?: string; sub?: string }>;
 }
 
-export default async function VenueDetailPage({ params }: PageProps) {
+export default async function VenueDetailPage({ params, searchParams }: PageProps) {
   const { location_id } = await params;
+  const { activity, sub } = await searchParams;
+
+  // Map the incoming ?activity= query param to a valid SportFilter
+  const defaultSportFilter: SportFilter =
+    activity && VALID_SPORT_FILTERS.includes(activity as SportFilter)
+      ? (activity as SportFilter)
+      : "all";
   const supabase = await createClient();
 
   const { data: loc, error } = await supabase
     .from("locations")
-    .select("id, name, address, postal_code, district, ward, community_council")
+    .select("id, name, address, postal_code, district, ward, community_council, venue_type")
     .eq("id", parseInt(location_id))
     .single();
 
@@ -35,6 +46,19 @@ export default async function VenueDetailPage({ params }: PageProps) {
 
       {/* Header card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+        {loc.venue_type && (
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mb-3 ${
+            loc.venue_type === "indoor"
+              ? "bg-red-50 text-red-700"
+              : "bg-green-100 text-green-700"
+          }`}>
+            {loc.venue_type === "indoor"
+              ? <House size={13} className="shrink-0" />
+              : <TreePine size={13} className="shrink-0" />
+            }
+            {loc.venue_type === "indoor" ? "Indoor" : "Outdoor"}
+          </div>
+        )}
         <h1
           className="text-2xl font-bold leading-tight mb-4"
           style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}
@@ -90,7 +114,7 @@ export default async function VenueDetailPage({ params }: PageProps) {
             className="flex items-center gap-1.5 text-sm text-brand hover:underline"
           >
             <ExternalLink size={13} />
-            toronto.ca official page
+            facility Toronto.ca official page
           </a>
         </div>
       </div>
@@ -103,7 +127,12 @@ export default async function VenueDetailPage({ params }: PageProps) {
         >
           Schedule
         </h2>
-        <Timetable locationId={parseInt(location_id)} defaultSportFilter="all" />
+        <Timetable
+          locationId={parseInt(location_id)}
+          defaultSportFilter={defaultSportFilter}
+          defaultSubFilter={sub ?? ""}
+          defaultShowPrograms={true}
+        />
       </div>
     </div>
   );

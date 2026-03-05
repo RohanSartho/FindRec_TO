@@ -90,18 +90,20 @@ export function Timetable({
   locationId,
   rinkType,
   defaultSportFilter = "skating",
+  defaultSubFilter = "",
   defaultShowPrograms = false,
 }: {
   assetId?: number;
   locationId?: number;
   rinkType?: string;
   defaultSportFilter?: SportFilter;
+  defaultSubFilter?: string;
   defaultShowPrograms?: boolean;
 }) {
   const [view, setView] = useState<View>("calendar");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [sportFilter, setSportFilter] = useState<SportFilter>(defaultSportFilter);
-  const [subFilter, setSubFilter] = useState("");
+  const [subFilter, setSubFilter] = useState(defaultSubFilter);
   const [dropins, setDropins] = useState<DropIn[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);

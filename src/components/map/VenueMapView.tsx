@@ -15,9 +15,11 @@ interface VenueMapViewProps {
   venues: Venue[];
   userLat?: number | null;
   userLng?: number | null;
+  activeActivity?: string;
+  activeSubActivity?: string;
 }
 
-export function VenueMapView({ venues, userLat, userLng }: VenueMapViewProps) {
+export function VenueMapView({ venues, userLat, userLng, activeActivity, activeSubActivity }: VenueMapViewProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const mapRef = useRef<MapRef>(null);
 
@@ -120,11 +122,16 @@ export function VenueMapView({ venues, userLat, userLng }: VenueMapViewProps) {
                 </div>
               )}
               <Link
-                href={
-                  selected.rink
-                    ? `/skating/${selected.rink.asset_id}`
-                    : `/venues/${selected.id}`
-                }
+                href={(() => {
+                  if (activeActivity === "skating" && selected.rink) {
+                    return `/skating/${selected.rink.asset_id}`;
+                  }
+                  const params = new URLSearchParams();
+                  if (activeActivity)    params.set("activity", activeActivity);
+                  if (activeSubActivity) params.set("sub", activeSubActivity);
+                  const qs = params.toString();
+                  return qs ? `/venues/${selected.id}?${qs}` : `/venues/${selected.id}`;
+                })()}
                 className="inline-block text-xs text-brand font-medium hover:underline pt-0.5"
               >
                 View schedule →

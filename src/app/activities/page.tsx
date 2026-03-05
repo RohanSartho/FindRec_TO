@@ -429,20 +429,33 @@ function VenuesPageInner() {
             </div>
           ) : viewStyle === "map" ? (
             <VenueMapView
-            venues={filteredVenues}
-            userLat={isNearMe ? nearMeLat : null}
-            userLng={isNearMe ? nearMeLng : null}
-          />
+              venues={filteredVenues}
+              userLat={isNearMe ? nearMeLat : null}
+              userLng={isNearMe ? nearMeLng : null}
+              activeActivity={activityFilter || undefined}
+              activeSubActivity={subActivityFilter || undefined}
+            />
           ) : viewStyle === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredVenues.map((venue) => (
-                <VenueCard key={venue.id} venue={venue} />
+                <VenueCard
+                  key={venue.id}
+                  venue={venue}
+                  activeActivity={activityFilter || undefined}
+                  activeSubActivity={subActivityFilter || undefined}
+                />
               ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {filteredVenues.map((venue) => (
-                <VenueCard key={venue.id} venue={venue} compact />
+                <VenueCard
+                  key={venue.id}
+                  venue={venue}
+                  compact
+                  activeActivity={activityFilter || undefined}
+                  activeSubActivity={subActivityFilter || undefined}
+                />
               ))}
             </div>
           )}

@@ -29,13 +29,33 @@ export interface Venue {
   lng?: number | null;
 }
 
-export function VenueCard({ venue, compact }: { venue: Venue; compact?: boolean }) {
+/** Build the correct detail page href.
+ *  - Only route to /skating/{asset_id} when the active filter is explicitly "skating".
+ *  - All other cases → /venues/{id}?activity=…&sub=… (preserves filter context).
+ */
+function venueHref(venue: Venue, activeActivity?: string, activeSubActivity?: string): string {
+  if (activeActivity === "skating" && venue.rink) {
+    return `/skating/${venue.rink.asset_id}`;
+  }
+  const params = new URLSearchParams();
+  if (activeActivity)    params.set("activity", activeActivity);
+  if (activeSubActivity) params.set("sub", activeSubActivity);
+  const qs = params.toString();
+  return qs ? `/venues/${venue.id}?${qs}` : `/venues/${venue.id}`;
+}
+
+export function VenueCard({
+  venue, compact, activeActivity, activeSubActivity,
+}: {
+  venue: Venue;
+  compact?: boolean;
+  activeActivity?: string;
+  activeSubActivity?: string;
+}) {
   const { isFavourited, toggle, loading } = useFavourite(venue.id);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const href = venue.rink
-    ? `/skating/${venue.rink.asset_id}`
-    : `/venues/${venue.id}`;
+  const href = venueHref(venue, activeActivity, activeSubActivity);
 
   const handleFavourite = async () => {
     const result = await toggle();
