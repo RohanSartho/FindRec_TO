@@ -466,8 +466,8 @@ export function Timetable({
                               {sortedCats(dayByCat).map((cat) => (
                                 <div key={cat}>
                                   <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="w-0.5 h-3 rounded-full bg-gray-300 shrink-0" />
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                    <span className="w-0.5 h-3 rounded-full bg-brand/50 shrink-0" />
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-brand/70">
                                       {cap(cat)}
                                     </p>
                                   </div>
