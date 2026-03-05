@@ -464,7 +464,7 @@ export function Timetable({
                                   </p>
                                   <div className="rounded-xl overflow-hidden border border-gray-100">
                                     {dayByCat[cat].map((d, idx) => (
-                                      <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip compact alt={idx % 2 === 1} />
+                                      <DropInRow key={`${d.course_id}-${date}-${d.start_time}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip compact alt={idx % 2 === 1} />
                                     ))}
                                   </div>
                                 </div>
@@ -490,7 +490,7 @@ export function Timetable({
                           <div className="space-y-2">
                             {dropinsByCategory[cat].map((d) => (
                               <DropInRow
-                                key={`${d.course_id}-${d.day_of_week}`}
+                                key={`${d.course_id}-${d.day_of_week}-${d.start_time}`}
                                 dropin={d}
                                 isOutdoor={rinkType === "outdoor"}
                                 hideChip
