@@ -530,6 +530,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      location_ids_for_activity: {
+        Args: { p_activity_type: string; p_sub_activity?: string }
+        Returns: number[]
+      }
       locations_near: {
         Args: { lat: number; lng: number; radius_m?: number }
         Returns: {

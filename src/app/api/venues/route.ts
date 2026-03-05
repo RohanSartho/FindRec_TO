@@ -17,38 +17,25 @@ import { NextRequest, NextResponse } from "next/server";
 //   all others → from dropins + programs tables (reflects real scheduled activities)
 //   no filter  → union of all known activity types from dropins + programs + rinks
 
-/** Get distinct location_ids that have sessions for a given activity_type (and optional sub_activity). */
+/** Get distinct location_ids that have sessions for a given activity_type (and optional sub_activity).
+ *  Uses the location_ids_for_activity RPC to avoid Supabase max_rows cap (1000/request).
+ *  Tables like programs can have 13k+ aquatics rows — scanning them with .limit() silently
+ *  drops venues that fall outside the cap. The RPC does UNION DISTINCT in SQL instead.
+ */
 async function locationIdsForActivity(
   supabase: Awaited<ReturnType<typeof createClient>>,
   activityType: string,
   subActivity?: string
 ): Promise<Set<number>> {
+  const args: { p_activity_type: string; p_sub_activity?: string } = { p_activity_type: activityType };
+  if (subActivity) args.p_sub_activity = subActivity;
+
+  const { data, error } = await supabase.rpc("location_ids_for_activity", args);
+
+  if (error) throw error;
+
   const ids = new Set<number>();
-
-  type ActivityTypeEnum = "skating" | "fitness" | "aquatics" | "arts" | "sports" | "other";
-  const enumVal = activityType as ActivityTypeEnum;
-
-  let dropinQ = supabase
-    .from("dropins")
-    .select("location_id")
-    .eq("activity_type", enumVal)
-    .not("location_id", "is", null)
-    .limit(5000);
-  if (subActivity) dropinQ = dropinQ.eq("sub_activity", subActivity);
-
-  let programQ = supabase
-    .from("programs")
-    .select("location_id")
-    .eq("activity_type", enumVal)
-    .not("location_id", "is", null)
-    .limit(5000);
-  if (subActivity) programQ = programQ.eq("sub_activity", subActivity);
-
-  const [dropinRes, programRes] = await Promise.all([dropinQ, programQ]);
-
-  for (const r of dropinRes.data ?? [])  if (r.location_id) ids.add(r.location_id);
-  for (const r of programRes.data ?? []) if (r.location_id) ids.add(r.location_id);
-
+  for (const id of data ?? []) ids.add(id);
   return ids;
 }
 
