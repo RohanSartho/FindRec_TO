@@ -98,7 +98,7 @@ export function Timetable({
   defaultSportFilter?: SportFilter;
   defaultShowPrograms?: boolean;
 }) {
-  const [view, setView] = useState<View>("day");
+  const [view, setView] = useState<View>("calendar");
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [sportFilter, setSportFilter] = useState<SportFilter>(defaultSportFilter);
   const [subFilter, setSubFilter] = useState("");
@@ -207,9 +207,9 @@ export function Timetable({
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex bg-gray-100 rounded-xl overflow-hidden">
           {([
+            { v: "calendar", label: "Calendar" },
             { v: "day",      label: "Today"    },
-            { v: "week",     label: "Week"      },
-            { v: "calendar", label: "Calendar"  },
+            { v: "week",     label: "Week"     },
           ] as { v: View; label: string }[]).map(({ v, label }) => (
             <button
               key={v}
@@ -233,55 +233,57 @@ export function Timetable({
         )}
 
         {(view === "week" || view === "calendar") && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setSelectedDate(shiftDate(selectedDate, -7))}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-xl hover:border-brand hover:text-brand transition"
+              className="w-7 h-7 flex items-center justify-center text-sm border border-gray-200 rounded-lg hover:border-brand hover:text-brand transition"
             >
-              ‹ Prev
+              ‹
             </button>
-            <span className="text-sm text-gray-600 font-medium">
+            <span className="text-xs text-gray-600 font-medium px-1.5 tabular-nums">
               {new Date(weekStart + "T00:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
               {" – "}
               {new Date(shiftDate(weekStart, 6) + "T00:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
             </span>
             <button
               onClick={() => setSelectedDate(shiftDate(selectedDate, 7))}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-xl hover:border-brand hover:text-brand transition"
+              className="w-7 h-7 flex items-center justify-center text-sm border border-gray-200 rounded-lg hover:border-brand hover:text-brand transition"
             >
-              Next ›
+              ›
             </button>
           </div>
         )}
 
-        <div className="relative">
-          <select
-            value={sportFilter}
-            onChange={(e) => { setSportFilter(e.target.value as SportFilter); setSubFilter(""); }}
-            className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
-          >
-            {SPORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-        </div>
-
-        {subOptions.length > 0 && (
-          <div className="relative">
+        <div className="flex items-center gap-2 flex-nowrap">
+          <div className="relative shrink-0">
             <select
-              value={subFilter}
-              onChange={(e) => setSubFilter(e.target.value)}
+              value={sportFilter}
+              onChange={(e) => { setSportFilter(e.target.value as SportFilter); setSubFilter(""); }}
               className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
             >
-              <option value="">All {SPORT_OPTIONS.find(o => o.value === sportFilter)?.label}</option>
-              {subOptions.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+              {SPORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
-        )}
+
+          {subOptions.length > 0 && (
+            <div className="relative shrink-0">
+              <select
+                value={subFilter}
+                onChange={(e) => setSubFilter(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+              >
+                <option value="">All {SPORT_OPTIONS.find(o => o.value === sportFilter)?.label}</option>
+                {subOptions.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
@@ -332,10 +334,10 @@ export function Timetable({
                         <table className="w-full border-collapse text-sm min-w-[600px]">
                           <thead>
                             <tr className="bg-gray-50">
-                              <th className="text-left py-2.5 px-3 font-semibold text-gray-700 w-36 border-b border-gray-200">
+                              <th className="text-left py-2.5 px-3 font-semibold text-gray-700 w-36 border-b border-r border-gray-200">
                                 Program
                               </th>
-                              {weekDays.map((day) => {
+                              {weekDays.map((day, di) => {
                                 const isToday = day === today;
                                 const dateObj = new Date(day + "T00:00:00");
                                 return (
@@ -343,8 +345,9 @@ export function Timetable({
                                     key={day}
                                     className={clsx(
                                       "py-2.5 px-2 text-center border-b min-w-[72px]",
+                                      di < 6 && "border-r",
                                       isToday
-                                        ? "border-b-2 border-b-brand text-brand bg-brand/5"
+                                        ? "border-b-2 border-b-brand text-brand bg-brand/5 border-r-gray-200"
                                         : "border-gray-200 text-gray-600"
                                     )}
                                   >
@@ -365,7 +368,7 @@ export function Timetable({
                               const collapsed = calCollapsed.has(cat);
                               return [
                                 <tr key={`hdr-${cat}`}>
-                                  <td colSpan={8} style={{ backgroundColor: "#1a3a2a" }} className="py-2 px-3">
+                                  <td colSpan={8} style={{ backgroundColor: "#1a3a2a" }} className="py-1.5 px-3">
                                     <button
                                       onClick={() => toggleCalCollapsed(cat)}
                                       className="flex items-center gap-2 text-white font-semibold text-sm w-full text-left"
@@ -386,11 +389,11 @@ export function Timetable({
                                       ri % 2 === 0 ? "bg-white" : "bg-gray-50/60"
                                     )}
                                   >
-                                    <td className="py-2.5 px-3 align-top">
+                                    <td className="py-2.5 px-3 align-top border-r border-gray-200">
                                       <div className="font-medium text-gray-900 text-sm leading-tight">{row.title}</div>
                                       <div className="text-xs text-gray-500 mt-0.5">{row.ageLabel}</div>
                                     </td>
-                                    {weekDays.map((day) => {
+                                    {weekDays.map((day, di) => {
                                       const isToday = day === today;
                                       const slots = row.slots[day] ?? [];
                                       return (
@@ -398,6 +401,7 @@ export function Timetable({
                                           key={day}
                                           className={clsx(
                                             "py-2 px-1 align-top text-center",
+                                            di < 6 && "border-r border-gray-200",
                                             isToday && "bg-brand/5"
                                           )}
                                         >
@@ -456,9 +460,9 @@ export function Timetable({
                                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
                                     {cap(cat)}
                                   </p>
-                                  <div className="space-y-2">
-                                    {dayByCat[cat].map((d) => (
-                                      <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip />
+                                  <div className="rounded-xl overflow-hidden border border-gray-100">
+                                    {dayByCat[cat].map((d, idx) => (
+                                      <DropInRow key={`${d.course_id}-${date}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip compact alt={idx % 2 === 1} />
                                     ))}
                                   </div>
                                 </div>
@@ -542,8 +546,24 @@ export function Timetable({
 }
 
 function DropInRow({
-  dropin, isOutdoor, hideChip = false,
-}: { dropin: DropIn; isOutdoor?: boolean; hideChip?: boolean }) {
+  dropin, isOutdoor, hideChip = false, compact = false, alt = false,
+}: { dropin: DropIn; isOutdoor?: boolean; hideChip?: boolean; compact?: boolean; alt?: boolean }) {
+  if (compact) {
+    return (
+      <div className={clsx("flex items-center justify-between px-3 py-1.5 gap-2", alt ? "bg-gray-50" : "bg-white")}>
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="text-sm text-gray-900 truncate">{compactTitle(dropin.course_title)}</span>
+          {isOutdoor && (
+            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">Free</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-gray-500">{formatAgeRange(dropin.min_age_months, dropin.max_age_months)}</span>
+          <span className="text-sm font-medium text-gray-700 tabular-nums">{formatTimeRange(dropin.start_time, dropin.end_time)}</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 gap-2">
       <div className="flex-1 min-w-0">
