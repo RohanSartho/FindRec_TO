@@ -401,14 +401,14 @@ Deno.serve(async (_req) => {
         const seen = new Set<string>();
         const dedupedDropins = dropins.filter((d) => {
           if (!d.course_id || !d.first_date) return true; // null course_id rows skip dedup
-          const key = `${d.course_id}-${d.location_id}-${d.first_date}`;
+          const key = `${d.course_id}-${d.location_id}-${d.first_date}-${d.start_time}`;
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
         });
-        // Upsert on (course_id, location_id, first_date) — each session is uniquely identified
-        // by its course, location, and date. Rows with null course_id are inserted fresh each run.
-        await batchUpsert(supabase, "dropins", dedupedDropins, UPSERT_CHUNK, "course_id,location_id,first_date");
+        // Upsert on (course_id, location_id, first_date, start_time) — multiple time slots
+        // can share the same course_id on the same date (e.g. Lane Swim at different hours).
+        await batchUpsert(supabase, "dropins", dedupedDropins, UPSERT_CHUNK, "course_id,location_id,first_date,start_time");
         dropinCount += dedupedDropins.length;
       });
       rowCounts.dropins = dropinCount;
