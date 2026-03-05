@@ -158,11 +158,18 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Query locations ──────────────────────────────────────────────────────
-    const { data: locations, error } = await supabase
+    // For non-skating: filter by venue_type (skating is already filtered via rinkMap above)
+    let locQuery = supabase
       .from("locations")
       .select("id, name, address, district, venue_type, lat, lng")
       .in("id", locationIds)
       .order("name");
+
+    if (rinkType && activityType !== "skating") {
+      locQuery = locQuery.eq("venue_type", rinkType);
+    }
+
+    const { data: locations, error } = await locQuery;
 
     if (error) throw error;
 

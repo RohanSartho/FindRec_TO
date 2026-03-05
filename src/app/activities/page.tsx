@@ -21,8 +21,6 @@ type PageMode = "venues" | "dropins" | "programs";
 type ViewStyle = "grid" | "list" | "map";
 type RinkTypeFilter = "" | "indoor" | "outdoor";
 
-// Activities that expose the Indoor / Outdoor sub-filter
-const RINK_FILTER_ACTIVITIES = ["skating"];
 
 function VenuesPageInner() {
   const searchParams = useSearchParams();
@@ -238,8 +236,6 @@ function VenuesPageInner() {
     [venues, nameSearch]
   );
 
-  const showRinkTypeFilter = RINK_FILTER_ACTIVITIES.includes(activityFilter);
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
 
@@ -337,6 +333,20 @@ function VenuesPageInner() {
               </>
             )}
 
+            {/* Venue Setting — always visible */}
+            <div className="relative">
+              <select
+                value={rinkTypeFilter}
+                onChange={(e) => setRinkTypeFilter(e.target.value as RinkTypeFilter)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
+              >
+                <option value="">All Venues</option>
+                <option value="indoor">Indoor</option>
+                <option value="outdoor">Outdoor</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
             {/* Activities dropdown */}
             <div className="relative">
               <select
@@ -363,22 +373,6 @@ function VenuesPageInner() {
                   {SUB_ACTIVITY_MAP[activityFilter].map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            )}
-
-            {/* Indoor / Outdoor dropdown — only visible when skating is selected */}
-            {showRinkTypeFilter && (
-              <div className="relative">
-                <select
-                  value={rinkTypeFilter}
-                  onChange={(e) => setRinkTypeFilter(e.target.value as RinkTypeFilter)}
-                  className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand cursor-pointer"
-                >
-                  <option value="">All Rinks</option>
-                  <option value="indoor">Indoor</option>
-                  <option value="outdoor">Outdoor</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
