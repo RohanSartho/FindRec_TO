@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { VenueCard, Venue } from "@/components/venues/VenueCard";
 import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilterPanel";
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
@@ -65,7 +65,9 @@ export default function VenuesPage() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [dropinViewStyle, setDropinViewStyle] = useState<"list" | "map">("list");
 
-  // ── fetchVenues ───────────────────────────────────────────────────────────
+  // ── fetchVenues — AbortController cancels stale in-flight requests ────────
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchVenues = useCallback(async (options?: {
     lat?: number;
     lng?: number;
@@ -75,6 +77,11 @@ export default function VenuesPage() {
     rinkType?: string;
     radius?: number;
   }) => {
+    // Cancel any previous in-flight fetch
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -87,13 +94,15 @@ export default function VenuesPage() {
       if (options?.subActivity)  params.set("sub_activity",  options.subActivity);
       if (options?.rinkType)     params.set("rink_type",     options.rinkType);
 
-      const res = await fetch(`/api/venues?${params.toString()}`);
+      const res = await fetch(`/api/venues?${params.toString()}`, { signal: controller.signal });
       const json = await res.json();
       setVenues(json.data ?? []);
-    } catch {
-      setError("Failed to load venues. Please try again.");
+    } catch (e: unknown) {
+      if ((e as Error)?.name !== "AbortError") {
+        setError("Failed to load venues. Please try again.");
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
@@ -168,7 +177,7 @@ export default function VenuesPage() {
     }
   }, [dropinFilters]);
 
-  // ── Geo handlers ──────────────────────────────────────────────────────────
+  // ── Geo handlers — only update state; useEffect drives the fetch ──────────
   const handleNearMe = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -177,20 +186,12 @@ export default function VenuesPage() {
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
         setIsNearMe(true);
-        setNearMeLat(lat);
-        setNearMeLng(lng);
+        setNearMeLat(pos.coords.latitude);
+        setNearMeLng(pos.coords.longitude);
         setDistrict("");
         setGeoLoading(false);
-        fetchVenues({
-          lat, lng,
-          activityType: activityFilter || undefined,
-          subActivity:  subActivityFilter || undefined,
-          rinkType:     rinkTypeFilter || undefined,
-          radius: parseInt(nearMeRadius) * 1000,
-        });
+        // useEffect will fire because nearMeLat/nearMeLng changed
       },
       (err) => {
         const msg = err.code === 1
@@ -209,25 +210,12 @@ export default function VenuesPage() {
     setIsNearMe(false);
     setNearMeLat(null);
     setNearMeLng(null);
-    fetchVenues({
-      district:     district          || undefined,
-      activityType: activityFilter    || undefined,
-      subActivity:  subActivityFilter || undefined,
-      rinkType:     rinkTypeFilter    || undefined,
-    });
+    // useEffect will fire and fetch with district/activity filters
   };
 
   const handleRadiusChange = (radius: string) => {
     setNearMeRadius(radius);
-    if (nearMeLat && nearMeLng) {
-      fetchVenues({
-        lat: nearMeLat, lng: nearMeLng,
-        activityType: activityFilter    || undefined,
-        subActivity:  subActivityFilter || undefined,
-        rinkType:     rinkTypeFilter    || undefined,
-        radius: parseInt(radius) * 1000,
-      });
-    }
+    // useEffect will fire because nearMeRadius changed
   };
 
   const handleDistrictChange = (value: string) => {
@@ -237,9 +225,12 @@ export default function VenuesPage() {
     setDistrict(value);
   };
 
-  // Client-side name search (results are already sorted alphabetically by the API)
-  const filteredVenues = venues.filter((v) =>
-    !nameSearch || v.name.toLowerCase().includes(nameSearch.toLowerCase())
+  // Client-side name search — memoised to avoid re-filtering on unrelated renders
+  const filteredVenues = useMemo(() =>
+    !nameSearch
+      ? venues
+      : venues.filter((v) => v.name.toLowerCase().includes(nameSearch.toLowerCase())),
+    [venues, nameSearch]
   );
 
   const showRinkTypeFilter = RINK_FILTER_ACTIVITIES.includes(activityFilter);
@@ -253,7 +244,7 @@ export default function VenuesPage() {
           className="text-3xl font-bold mb-4"
           style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}
         >
-          Venues in Toronto
+          Find Community Centres &amp; Activities in Toronto
         </h1>
 
         {/* Mode tabs */}

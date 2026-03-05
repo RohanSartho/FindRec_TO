@@ -23,7 +23,7 @@ export function Navbar() {
                 <path d="M10 12.5C13.5 12.5 16 14.5 16 16.5" stroke="#c8f0d4" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
             </div>
-            <span style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: "17px", color: "#1a3a2a", letterSpacing: "-0.5px" }}>
+            <span style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: "18px", color: "#1a3a2a", letterSpacing: "-0.5px" }}>
               FindRec <span style={{ fontWeight: 300, fontStyle: "italic" }}>Toronto</span>
             </span>
           </Link>
