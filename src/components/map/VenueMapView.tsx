@@ -45,7 +45,7 @@ export function VenueMapView({ venues, userLat, userLng }: VenueMapViewProps) {
     : TORONTO_CENTER;
 
   return (
-    <div className="w-full h-[580px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+    <div className="w-4/5 mx-auto h-[480px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
       <Map
         ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
@@ -135,9 +135,14 @@ export function VenueMapView({ venues, userLat, userLng }: VenueMapViewProps) {
       </Map>
 
       {pins.length < venues.length && (
-        <p className="text-xs text-gray-400 text-center mt-2">
-          {venues.length - pins.length} venue{venues.length - pins.length !== 1 ? "s" : ""} not shown (no coordinates)
-        </p>
+        <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          Showing <strong className="mx-0.5">{pins.length}</strong> of <strong className="mx-0.5">{venues.length}</strong> venues —{" "}
+          {venues.length - pins.length} {venues.length - pins.length === 1 ? "venue has" : "venues have"} no recorded coordinates and won&apos;t appear on the map. Switch to Grid or List to see all.
+        </div>
       )}
     </div>
   );
