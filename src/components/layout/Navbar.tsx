@@ -24,18 +24,11 @@ export function Navbar() {
               </svg>
             </div>
             <span style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: "18px", color: "#1a3a2a", letterSpacing: "-0.5px" }}>
-              FindRec <span style={{ fontWeight: 300, fontStyle: "italic" }}>Toronto</span>
+              FindRec <span style={{ fontWeight: 300, fontStyle: "italic", fontSize: "19px" }}>Toronto</span>
             </span>
           </Link>
 
           <div className="flex items-center gap-1">
-            <Link
-              href="/activities"
-              className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
-            >
-              Explore
-            </Link>
-
             {!loading && (
               <>
                 {user ? (
