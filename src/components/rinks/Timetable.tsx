@@ -427,16 +427,16 @@ export function Timetable({
 
                 /* ── WEEK LIST ──────────────────────────────────────────── */
                 ) : view === "week" ? (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {sortedDateKeys.length === 0 ? (
                       <EmptyState message="No drop-in sessions this week." />
                     ) : (
                       sortedDateKeys.map((date) => {
                         const items = dropinsByDate[date];
                         const isToday = date === today;
-                        const dateLabel = new Date(date + "T00:00:00").toLocaleDateString("en-CA", {
-                          weekday: "long", month: "short", day: "numeric",
-                        });
+                        const dateObj = new Date(date + "T00:00:00");
+                        const weekday = dateObj.toLocaleDateString("en-CA", { weekday: "long" });
+                        const dateShort = dateObj.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
                         const dayByCat: Record<string, DropIn[]> = {};
                         for (const item of items) {
@@ -447,21 +447,30 @@ export function Timetable({
 
                         return (
                           <div key={date}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-bold text-base text-gray-900">{dateLabel}</h3>
-                              {isToday && (
-                                <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                                  Today
+                            {/* Date heading */}
+                            <div className={clsx(
+                              "flex items-center gap-3 px-3 py-2 rounded-xl mb-2",
+                              isToday ? "bg-brand/8" : "bg-gray-50"
+                            )}>
+                              <div className={clsx("w-1 h-5 rounded-full shrink-0", isToday ? "bg-brand" : "bg-gray-300")} />
+                              <div className="flex items-baseline gap-2">
+                                <h3 className={clsx("font-bold text-sm", isToday ? "text-brand" : "text-gray-800")}>
+                                  {weekday}
+                                </h3>
+                                <span className={clsx("text-xs", isToday ? "text-brand/70" : "text-gray-400")}>
+                                  {dateShort}{isToday ? " · Today" : ""}
                                 </span>
-                              )}
+                              </div>
                             </div>
-                            <div className={clsx("h-px mb-3", isToday ? "bg-brand/40" : "bg-gray-100")} />
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                               {sortedCats(dayByCat).map((cat) => (
                                 <div key={cat}>
-                                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                                    {cap(cat)}
-                                  </p>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="w-0.5 h-3 rounded-full bg-gray-300 shrink-0" />
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                      {cap(cat)}
+                                    </p>
+                                  </div>
                                   <div className="rounded-xl overflow-hidden border border-gray-100">
                                     {dayByCat[cat].map((d, idx) => (
                                       <DropInRow key={`${d.course_id}-${date}-${d.start_time}`} dropin={d} isOutdoor={rinkType === "outdoor"} hideChip compact alt={idx % 2 === 1} />
@@ -478,22 +487,27 @@ export function Timetable({
 
                 /* ── DAY LIST ───────────────────────────────────────────── */
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {filteredDropins.length === 0 ? (
                       <EmptyState message="No drop-in sessions for this day." />
                     ) : (
                       sortedCats(dropinsByCategory).map((cat) => (
                         <div key={cat}>
-                          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
-                            {cap(cat)}
-                          </p>
-                          <div className="space-y-2">
-                            {dropinsByCategory[cat].map((d) => (
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="w-0.5 h-3 rounded-full bg-gray-300 shrink-0" />
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                              {cap(cat)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl overflow-hidden border border-gray-100">
+                            {dropinsByCategory[cat].map((d, idx) => (
                               <DropInRow
                                 key={`${d.course_id}-${d.day_of_week}-${d.start_time}`}
                                 dropin={d}
                                 isOutdoor={rinkType === "outdoor"}
                                 hideChip
+                                compact
+                                alt={idx % 2 === 1}
                               />
                             ))}
                           </div>
