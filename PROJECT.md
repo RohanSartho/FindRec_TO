@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-04 (story: Phase 16 — Activities page nav redesign + compact list mode)
+> Last updated: 2026-03-05 (Phase 18 — routing fixes, sub_activity preservation, timezone + data-quality fixes)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -78,6 +78,12 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0013_venue_type.sql` | Add venue_type TEXT column to locations (indoor/outdoor) |
 | `0014_backfill_venue_types.sql` | Backfill venue_type from CKAN facilities (147 indoor, 291 outdoor) |
 | `0015_location_lat_lng.sql` | Add lat/lng float columns to locations, backfilled from PostGIS coordinates |
+| `0016_backfill_missing_coords.sql` | Manual geocode for 7 active community centres that had no geometry (Adam Beck, Annette, Beaches, Bedford Park, Bob Abate, David Appleton, Eglinton Flats) |
+| `0017_locations_near_fix.sql` | Fix `locations_near` RPC — SQL param collision with `lat`/`lng` column names |
+| `0018_backfill_missing_coords.sql` | Geocode all 227 active venues (appearing in dropins or programs) with `lat IS NULL`; 225 via Nominatim + 2 manual; covers aquatics pools, community centres, arenas, schools |
+| `0019_activity_location_ids_rpc.sql` | New RPC `location_ids_for_activity(p_activity_type, p_sub_activity)` — UNION DISTINCT on dropins+programs to bypass Supabase 1000-row cap; fixes aquatics venues missing from map (was 5/16, now 76 locations) |
+| `0020_remove_timbrell_stub.sql` | Delete fake rink stub (asset_id=99001) inserted for Dennis R. Timbrell in Phase 11 — caused wrong `/skating/99001` routing |
+| `0021_fix_aquatic_fitness_sub_activity.sql` | Correct sub_activity for all "Aquatic Fitness: …" drop-ins from "Leisure Swim" (wrong ILIKE backfill in 0011) to "Aquafit" |
 
 ---
 
@@ -176,11 +182,15 @@ src/
 
 | Issue | Status | Notes |
 |---|---|---|
-| 33 locations missing coordinates | Open | No geometry in CKAN source |
+| 33 locations missing coordinates | Fixed | Migration 0018 geocoded all 227 active venues with missing coords via Nominatim; 2 manual fixes for Nominatim misses |
 | `pad_length_ft` null on outdoor rinks | Open | CKAN doesn't include for outdoor |
 | 2,437 facilities skipped | Open | location_id not in our locations table |
+| Outdoor aquatics absent in winter | Expected | Outdoor pools run June–September only; sessions don't appear in CKAN until ~May when City publishes summer schedules |
 | District filter needs 2-step query | Fixed | PostgREST can't filter parent via join |
-| Dennis R. Timbrell not showing | Open | Likely missing rink row — run: `SELECT * FROM rinks r JOIN locations l ON l.id=r.location_id WHERE l.name ILIKE '%timbrell%'` |
+| Dennis R. Timbrell not showing in aquatics filter | Fixed | Root cause: Supabase 1000-row cap in `/api/venues`; fixed via RPC (migration 0019) |
+| Dennis R. Timbrell routing to `/skating/99001` | Fixed | Removed fake rink stub (migration 0020); context-aware `venueHref()` in VenueCard |
+| Monday empty in Timbrell calendar | Fixed | Timezone bug: `new Date(dateParam)` parsed as UTC causing wrong weekday; fixed with `new Date(dateParam + "T00:00:00")` in both programs API routes |
+| Aquatic Fitness sub_activity wrong | Fixed | Migration 0021 corrected "Aquatic Fitness: …" from "Leisure Swim" → "Aquafit" |
 | Dropin dedup wrong unique key | Fixed | Was (course_id, location_id), now (+first_date) |
 | PostGIS in extensions schema | Fixed | Add `set search_path to public, extensions` to all migrations |
 | Next.js 15 params are Promise | Fixed | Always `await params` in dynamic routes |
@@ -254,4 +264,6 @@ npx tsc --noEmit                               # Check for type errors
 | 14 | Address backfill: discovered CKAN locations resource has split fields (Street No/Name/Type/Dir) not a single "Address" field. Script fetched 1,925 records, generated migration 0012 with 1,922 UPDATEs. Fixed ingest-ckan to build address from components going forward. [UX-003] updated to cover remaining gap via Google Places. |
 | 15 | Mapbox map view: migration 0015 (lat/lng cols on locations), VenueMapView + DropInMapView components (react-map-gl v8 + mapbox-gl v3), Grid/List/Map toggle in Find Venues, List/Map toggle in Drop-ins. Requires NEXT_PUBLIC_MAPBOX_TOKEN in env. Near Me + user location pulsing dot on maps. Migration 0017 fixed locations_near SQL param collision. Timetable calendar + week category grouping view. |
 | 16 | Activities page nav redesign: replaced pill toggle with border-2 icon+text tab cards (Community Centres / Drop-in Activities / Registered Programs). Search bar white bg. View toggle reordered Map→Grid→List with labels. Compact list VenueCard (horizontal row, dot indicator, tighter gap-1.5). Registered Programs placeholder tab. |
+| 17 | Timetable UX overhaul: default to Calendar view, reordered tabs (Calendar→Today→Week), compact ‹/› prev-next navigation, sport + sub-filter grouped flex-nowrap, compact alternating week-list rows. Map coord backfill: amber warning banner in VenueMapView for venues missing coords; script `geocode-all-missing-coords.mjs` paginates all 63K dropin/program rows to find 315 active location IDs, geocodes 227 with missing lat/lng via Nominatim; migration 0018 applied — aquatics map improved from 5/16 → 16/16 venues. |
+| 18 | Routing + data-quality fixes: RPC for activity location IDs (0019) bypasses Supabase 1000-row cap; remove fake Timbrell rink stub (0020); context-aware VenueHref in VenueCard routes to /skating only when skating filter active; filter context preserved in URL (?activity=&sub=) when navigating to venue; Timetable accepts defaultSubFilter prop; timezone bug fixed in both programs API routes (new Date + "T00:00:00"); Aquatic Fitness sub_activity corrected to Aquafit (0021). |
 | Next | Vercel deploy, Registered Programs feature, analytics, polish |
