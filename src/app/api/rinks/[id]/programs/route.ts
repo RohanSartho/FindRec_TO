@@ -16,7 +16,7 @@ export async function GET(
 
   const view = searchParams.get("view") ?? "day";
   const dateParam = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
-  const targetDate = new Date(dateParam);
+  const targetDate = new Date(dateParam + "T00:00:00");
 
   // Map JS day (0=Sun) to our DB abbreviation
   const DAY_MAP: Record<number, string> = {

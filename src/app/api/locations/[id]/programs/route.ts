@@ -18,7 +18,7 @@ export async function GET(
   const locationId = parseInt(id);
   const view = searchParams.get("view") ?? "day";
   const dateParam = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
-  const targetDate = new Date(dateParam);
+  const targetDate = new Date(dateParam + "T00:00:00");
 
   const DAY_MAP: Record<number, string> = {
     0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed",
