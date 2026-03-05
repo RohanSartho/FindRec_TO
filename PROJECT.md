@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-04 (story: Phase 15 — Mapbox map view for venues and drop-ins)
+> Last updated: 2026-03-04 (story: Phase 16 — Activities page nav redesign + compact list mode)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -252,5 +252,6 @@ npx tsc --noEmit                               # Check for type errors
 | 12 | Venues browser redesign — /skating renamed /activities, shows all community centres; Activity filter dropdown (skating/fitness/aquatics/arts/sports); conditional Indoor/Outdoor dropdown for skating; /api/venues + /api/locations/[id]/programs; VenueCard; /venues/[location_id] detail page; Navbar "Explore" |
 | 13 | sub_activity column on dropins + programs (migration 0011); inferActivityType bug fix (Pickleball/Badminton/Tai Chi now correctly classified); SUB_ACTIVITY_MAP config; sub-activity dropdown in venues browser; sub-activity chips in DropInFilterPanel; sport+sub-activity dropdowns in Timetable; non-skating drop-in search mode |
 | 14 | Address backfill: discovered CKAN locations resource has split fields (Street No/Name/Type/Dir) not a single "Address" field. Script fetched 1,925 records, generated migration 0012 with 1,922 UPDATEs. Fixed ingest-ckan to build address from components going forward. [UX-003] updated to cover remaining gap via Google Places. |
-| 15 | Mapbox map view: migration 0015 (lat/lng cols on locations), VenueMapView + DropInMapView components (react-map-gl v8 + mapbox-gl v3), Grid/List/Map toggle in Find Venues, List/Map toggle in Drop-ins. Requires NEXT_PUBLIC_MAPBOX_TOKEN in env. |
-| Next | Vercel deploy, analytics, polish |
+| 15 | Mapbox map view: migration 0015 (lat/lng cols on locations), VenueMapView + DropInMapView components (react-map-gl v8 + mapbox-gl v3), Grid/List/Map toggle in Find Venues, List/Map toggle in Drop-ins. Requires NEXT_PUBLIC_MAPBOX_TOKEN in env. Near Me + user location pulsing dot on maps. Migration 0017 fixed locations_near SQL param collision. Timetable calendar + week category grouping view. |
+| 16 | Activities page nav redesign: replaced pill toggle with border-2 icon+text tab cards (Community Centres / Drop-in Activities / Registered Programs). Search bar white bg. View toggle reordered Map→Grid→List with labels. Compact list VenueCard (horizontal row, dot indicator, tighter gap-1.5). Registered Programs placeholder tab. |
+| Next | Vercel deploy, Registered Programs feature, analytics, polish |
