@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { VenueCard, Venue } from "@/components/venues/VenueCard";
 import { DropInFilterPanel, DropInFilters } from "@/components/dropin/DropInFilterPanel";
 import { DropInResultsTable } from "@/components/dropin/DropInResultsTable";
 import {
   MapPin, ChevronDown, ChevronUp, Loader2,
   X, LayoutGrid, List, Search, Filter, Map as MapIcon,
+  Building2, CalendarDays, BookOpen,
 } from "lucide-react";
 import {
   DISTRICTS, RADIUS_OPTIONS, DROPIN_FILTER_OPTIONS, ACTIVITY_FILTER_OPTIONS, SUB_ACTIVITY_MAP,
@@ -15,7 +16,7 @@ import { VenueMapView } from "@/components/map/VenueMapView";
 import { DropInMapView } from "@/components/map/DropInMapView";
 import clsx from "clsx";
 
-type PageMode = "venues" | "dropins";
+type PageMode = "venues" | "dropins" | "programs";
 type ViewStyle = "grid" | "list" | "map";
 type RinkTypeFilter = "" | "indoor" | "outdoor";
 
@@ -255,24 +256,29 @@ export default function VenuesPage() {
           Venues in Toronto
         </h1>
 
-        {/* Mode toggle */}
-        <div className="flex bg-gray-100 rounded-xl overflow-hidden w-fit">
-          <button
-            onClick={() => setMode("venues")}
-            className={`px-5 py-2.5 text-sm font-medium transition ${
-              mode === "venues" ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Find Venues
-          </button>
-          <button
-            onClick={() => setMode("dropins")}
-            className={`px-5 py-2.5 text-sm font-medium transition ${
-              mode === "dropins" ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            Drop-ins Today
-          </button>
+        {/* Mode tabs */}
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: "venues",   label: "Community Centres",   icon: Building2 },
+              { id: "dropins",  label: "Drop-in Activities",  icon: CalendarDays },
+              { id: "programs", label: "Registered Programs", icon: BookOpen },
+            ] as { id: PageMode; label: string; icon: React.ElementType }[]
+          ).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setMode(id)}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition",
+                mode === id
+                  ? "bg-brand text-white border-brand shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-brand hover:text-brand"
+              )}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -390,33 +396,32 @@ export default function VenuesPage() {
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
                 placeholder="Search by name…"
-                className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand w-44"
+                className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand w-44 bg-white shadow-sm"
               />
             </div>
 
-            {/* Grid / List / Map toggle */}
-            <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden ml-auto">
-              <button
-                onClick={() => setViewStyle("grid")}
-                className={clsx("p-2 transition", viewStyle === "grid" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
-                aria-label="Grid view"
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => setViewStyle("list")}
-                className={clsx("p-2 transition", viewStyle === "list" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
-                aria-label="List view"
-              >
-                <List size={16} />
-              </button>
-              <button
-                onClick={() => setViewStyle("map")}
-                className={clsx("p-2 transition", viewStyle === "map" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-50")}
-                aria-label="Map view"
-              >
-                <MapIcon size={16} />
-              </button>
+            {/* Map / Grid / List toggle */}
+            <div className="flex border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm ml-auto">
+              {(
+                [
+                  { id: "map",  label: "Map",  icon: MapIcon },
+                  { id: "grid", label: "Grid", icon: LayoutGrid },
+                  { id: "list", label: "List", icon: List },
+                ] as { id: ViewStyle; label: string; icon: React.ElementType }[]
+              ).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setViewStyle(id)}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition",
+                    viewStyle === id ? "bg-brand text-white" : "text-gray-500 bg-white hover:bg-gray-50"
+                  )}
+                  aria-label={`${label} view`}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -445,15 +450,34 @@ export default function VenuesPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {filteredVenues.map((venue) => (
-                <VenueCard key={venue.id} venue={venue} />
+                <VenueCard key={venue.id} venue={venue} compact />
               ))}
             </div>
           )}
         </>
+      ) : mode === "programs" ? (
+        /* ── Registered Programs mode ─────────────────────────────────── */
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-brand/10 flex items-center justify-center mb-4">
+            <BookOpen size={28} className="text-brand" />
+          </div>
+          <h2
+            className="text-xl font-bold mb-2"
+            style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}
+          >
+            Registered Programs
+          </h2>
+          <p className="text-gray-500 text-sm max-w-sm">
+            Browse and search registered programs across Toronto community centres — swimming lessons, fitness classes, arts programs, and more.
+          </p>
+          <p className="mt-3 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+            Coming soon
+          </p>
+        </div>
       ) : (
-        /* ── Drop-ins Today mode (unchanged) ──────────────────────────── */
+        /* ── Drop-ins Today mode ───────────────────────────────────────── */
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
 
           {/* Left: filter panel */}

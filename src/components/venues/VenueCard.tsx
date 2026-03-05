@@ -29,7 +29,7 @@ export interface Venue {
   lng?: number | null;
 }
 
-export function VenueCard({ venue }: { venue: Venue }) {
+export function VenueCard({ venue, compact }: { venue: Venue; compact?: boolean }) {
   const { isFavourited, toggle, loading } = useFavourite(venue.id);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -41,6 +41,56 @@ export function VenueCard({ venue }: { venue: Venue }) {
     const result = await toggle();
     if (result?.requiresAuth) setShowAuthModal(true);
   };
+
+  if (compact) {
+    const venueType = venue.rink ? venue.rink.rink_type : venue.venue_type;
+    return (
+      <>
+        <div className="relative bg-white rounded-xl border border-gray-200 hover:border-brand hover:shadow-sm transition px-3 py-2 flex items-center gap-2.5">
+          <Link href={href} className="absolute inset-0 rounded-xl z-10" aria-label={venue.name} />
+
+          {/* Indoor/Outdoor dot */}
+          {venueType && (
+            <span
+              className={clsx("shrink-0 w-2 h-2 rounded-full", venueType === "indoor" ? "bg-red-400" : "bg-green-400")}
+              title={venueType === "indoor" ? "Indoor" : "Outdoor"}
+            />
+          )}
+
+          {/* Name + address */}
+          <div className="relative z-20 flex-1 min-w-0 pointer-events-none">
+            <p className="text-sm font-semibold text-gray-900 truncate">{venue.name}</p>
+            {venue.address && (
+              <p className="text-xs text-gray-400 truncate">{venue.address}</p>
+            )}
+          </div>
+
+          {/* Activity icon chips (icon only, max 3) */}
+          <div className="hidden sm:flex gap-1 shrink-0 relative z-20 pointer-events-none">
+            {venue.activity_types.slice(0, 3).map((type) => {
+              const Icon = ACTIVITY_ICONS[type];
+              return Icon ? (
+                <span key={type} className={`inline-flex items-center px-1.5 py-0.5 rounded-full ${activityTypeColor(type)}`} title={type}>
+                  <Icon size={10} />
+                </span>
+              ) : null;
+            })}
+          </div>
+
+          {/* Favourite */}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleFavourite(); }}
+            disabled={loading}
+            className="relative z-20 shrink-0 p-1 rounded-full hover:bg-gray-50 transition"
+            aria-label={isFavourited ? "Remove from favourites" : "Add to favourites"}
+          >
+            <Heart size={14} className={clsx("transition", isFavourited ? "fill-red-500 text-red-500" : "text-gray-300 hover:text-red-400")} />
+          </button>
+        </div>
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} message="Sign in to save your favourite venues." />
+      </>
+    );
+  }
 
   return (
     <>
