@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import posthog from "posthog-js";
+import { ScrollHint } from "@/components/ui/ScrollHint";
 
 interface Session {
   course_id: number;
@@ -107,6 +108,7 @@ export function DropInResultsTable({
 
   return (
     <div className="space-y-4">
+      <ScrollHint />
       {/* Summary header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>

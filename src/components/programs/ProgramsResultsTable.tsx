@@ -7,6 +7,7 @@ import Link from "next/link";
 import React from "react";
 import clsx from "clsx";
 import posthog from "posthog-js";
+import { ScrollHint } from "@/components/ui/ScrollHint";
 
 interface Program {
   course_id: number | null;
@@ -208,6 +209,7 @@ export function ProgramsResultsTable({
 
   return (
     <div className="space-y-4">
+      <ScrollHint />
       {/* Summary */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm font-medium text-gray-900">
