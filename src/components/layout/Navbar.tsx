@@ -16,13 +16,7 @@ export function Navbar() {
       <nav className="sticky top-0 z-40 border-b border-gray-200" style={{ backgroundColor: "#f5f2ec" }}>
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div style={{ width: "32px", height: "32px", background: "#1a3a2a", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="8" r="3.5" stroke="#c8f0d4" strokeWidth="1.8" />
-                <path d="M10 12.5C6.5 12.5 4 14.5 4 16.5" stroke="#c8f0d4" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M10 12.5C13.5 12.5 16 14.5 16 16.5" stroke="#c8f0d4" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </div>
+            <img src="/logo.png" alt="FindRec logo" width={36} height={36} />
             <span style={{ fontFamily: "var(--font-fraunces), serif", fontWeight: 700, fontSize: "18px", color: "#1a3a2a", letterSpacing: "-0.5px" }}>
               FindRec <span style={{ fontWeight: 300, fontStyle: "italic", fontSize: "19px" }}>Toronto</span>
             </span>

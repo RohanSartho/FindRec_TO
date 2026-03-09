@@ -4,16 +4,7 @@ export default function AdminLoginPage() {
       <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-8 w-full max-w-sm">
         {/* Brand row */}
         <div className="flex items-center gap-2 mb-6">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "#1a3a2a" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="8" r="3.5" stroke="#c8f0d4" strokeWidth="1.8" />
-              <path d="M10 12.5C6.5 12.5 4 14.5 4 16.5" stroke="#c8f0d4" strokeWidth="1.8" strokeLinecap="round" />
-              <path d="M10 12.5C13.5 12.5 16 14.5 16 16.5" stroke="#c8f0d4" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </div>
+          <img src="/logo.png" alt="FindRec logo" width={32} height={32} />
           <span
             className="font-bold text-sm"
             style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}
