@@ -1,7 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const ADMIN_PREFIX = "/internal-ops-findrecto";
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── Admin route guard ──────────────────────────────────────────────────────
+  // The login page itself is always accessible; everything else under
+  // /internal-ops-findrecto requires a valid admin_token cookie.
+  if (
+    pathname.startsWith(ADMIN_PREFIX) &&
+    pathname !== `${ADMIN_PREFIX}/login`
+  ) {
+    const token  = request.cookies.get("admin_token")?.value;
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret || token !== secret) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -13,20 +31,38 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          // Wrap in try/catch — Next.js 15 cookie store lock can be stolen by
+          // a concurrent request. Silently dropping is safe here: the session
+          // refresh will be retried on the next request via getUser().
+          try {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          } catch {
+            // AbortError: lock broken — safe to ignore
+          }
         },
       },
     }
   );
 
-  // Refresh session — required for Server Components
-  const { data: { user } } = await supabase.auth.getUser();
+  // Refresh session — required for Server Components.
+  // Wrapped in try/catch: on pages like /activities that fire 3+ concurrent API
+  // requests, multiple middleware instances race to refresh the session token and
+  // write cookies, which throws AbortError ("lock broken") in Next.js 15. Dropping
+  // the error is safe — the session is still readable from existing cookies, and
+  // a successful refresh will happen on the next request.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // AbortError: lock broken by concurrent request — safe to ignore
+  }
 
   // Protect /api/favourites — require auth
   if (

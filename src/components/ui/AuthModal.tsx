@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { X } from "lucide-react";
+import posthog from "posthog-js";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,6 +14,7 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +30,13 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
     try {
       const fn = mode === "signin" ? signInWithEmail : signUpWithEmail;
       const { error } = await fn(email, password);
-      if (error) setError(error.message);
-      else onClose();
+      if (error) {
+        setError(error.message);
+      } else {
+        posthog.capture(mode === "signin" ? "auth_login" : "auth_signup", { method: "email" });
+        onClose();
+        router.push("/dashboard");
+      }
     } finally {
       setLoading(false);
     }

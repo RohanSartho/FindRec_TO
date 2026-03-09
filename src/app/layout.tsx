@@ -5,6 +5,7 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { FavouritesProvider } from "@/lib/context/FavouritesContext";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { PostHogProvider } from "@/components/analytics/PostHogProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased text-gray-900`} style={{ backgroundColor: "#f5f2ec" }} suppressHydrationWarning>
+        <PostHogProvider>
         <FavouritesProvider>
           <Suspense fallback={null}>
             <PageLoader />
@@ -35,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main>{children}</main>
         </FavouritesProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

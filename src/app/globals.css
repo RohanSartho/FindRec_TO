@@ -15,6 +15,15 @@
   --color-brand-dark: #142d21;
 }
 
+/* Filter attention pulse — border oscillates between full and 30% opacity */
+@keyframes filterPulse {
+  0%, 100% { border-color: #1a3a2a; }
+  50%       { border-color: rgba(26, 58, 42, 0.25); }
+}
+.animate-filter-pulse {
+  animation: filterPulse 1.5s ease-in-out infinite;
+}
+
 /* Force light mode — prevent browser/OS dark mode from inverting the UI */
 html {
   color-scheme: only light;

@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-05 (Phase 18 — routing fixes, sub_activity preservation, timezone + data-quality fixes)
+> Last updated: 2026-03-09 (AbortError definitive fix + admin dashboard restyle)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -25,6 +25,7 @@
 | Data | Toronto Open Data (CKAN API) — Open Government Licence |
 | Auth | Supabase Auth — Google OAuth + email/password |
 | Hosting | Vercel (not yet deployed) |
+| Analytics | PostHog (posthog-js + posthog-js/react) |
 | Repo | GitHub private — RohanSartho/FindRec_TO |
 | AI assist | Claude Code (you) |
 
@@ -84,6 +85,10 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0019_activity_location_ids_rpc.sql` | New RPC `location_ids_for_activity(p_activity_type, p_sub_activity)` — UNION DISTINCT on dropins+programs to bypass Supabase 1000-row cap; fixes aquatics venues missing from map (was 5/16, now 76 locations) |
 | `0020_remove_timbrell_stub.sql` | Delete fake rink stub (asset_id=99001) inserted for Dennis R. Timbrell in Phase 11 — caused wrong `/skating/99001` routing |
 | `0021_fix_aquatic_fitness_sub_activity.sql` | Correct sub_activity for all "Aquatic Fitness: …" drop-ins from "Leisure Swim" (wrong ILIKE backfill in 0011) to "Aquafit" |
+| `0022_dropin_unique_add_start_time.sql` | Add start_time to dropin unique key — multiple time slots per course_id on same day |
+| `0023_backfill_districts.sql` | Backfill district field on locations |
+| `0024_backfill_programs_aquatics_sub_activity.sql` | Backfill sub_activity for aquatics programs |
+| `0025_backfill_ball_hockey.sql` | Reclassify Ball Hockey from `skating` → `sports`; set `sub_activity = 'Ball Hockey'` on both programs + dropins |
 
 ---
 
@@ -99,9 +104,11 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/locations/[id]/programs` | GET | Timetable by location_id (for non-rink venues); includes sub_activity |
 | `/api/dropin-search` | GET | Drop-in sessions — skating mode (program_types chips) or non-skating mode (activity_type + sub_activity); filters: date, district, geo, time |
 | `/api/programs` | GET | Programs — filters: location_id, activity_type, date |
+| `/api/programs-search` | GET | Registered programs search — filters: date_from/date_to (overlap), time_of_day, activity_type, sub_activity, district/geo, age_category, q (text searches both activity_title + course_title); 300-row cap; client-side sort by location name |
 | `/api/districts` | GET | Distinct districts for filter UI |
 | `/api/seasons` | GET | Season list |
 | `/api/favourites` | GET/POST/DELETE | Auth-gated user favourites |
+| `/api/admin/auth` | POST | Validate admin passphrase, set `admin_token` httpOnly cookie (8hr) |
 
 ---
 
@@ -116,6 +123,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/favourites` | Client | Auth-gated saved locations |
 | `/auth/callback` | Route Handler | Supabase OAuth callback |
 | `/auth/error` | Server | Auth error fallback |
+| `/internal-ops-findrecto/login` | Server | Admin login (posts to /api/admin/auth) |
+| `/internal-ops-findrecto` | Server | Admin dashboard — PostHog analytics (cookie-gated) |
 
 ---
 
@@ -125,7 +134,10 @@ src/
 ├── components/
 │   ├── dropin/
 │   │   ├── DropInFilterPanel.tsx   # Activity type + sub-activity chips; Program type chips (skating only); location, date, time-of-day filters
-│   │   └── DropInResultsTable.tsx  # Grouped sessions table with Free badge
+│   │   └── DropInResultsTable.tsx  # Grouped sessions table with Free badge; links to /venues/{location_id} with returnTo param
+│   ├── programs/
+│   │   ├── ProgramsFilterPanel.tsx # Date range (From/To), time of day, location, activity + sub-activity chips, age category, text search; same pulsing-border UX as DropInFilterPanel
+│   │   └── ProgramsResultsTable.tsx # Flat results table: Program | Location | Days | Dates | Time | Age | Status (Full/Open/Cancelled) | Price; venue links with returnTo
 │   ├── layout/
 │   │   └── Navbar.tsx              # Sticky nav, auth state, user menu
 │   ├── map/
@@ -137,6 +149,12 @@ src/
 │   │   └── Timetable.tsx           # Day/Week schedule view; accepts assetId OR locationId
 │   ├── venues/
 │   │   └── VenueCard.tsx           # Generic venue card — activity chips, rink badge, favourite
+│   ├── analytics/
+│   │   ├── PostHogProvider.tsx     # PHProvider wrapper + SPA pageview tracker
+│   │   └── AnalyticsPageEvent.tsx  # Client bridge: fires posthog event on mount (for server pages)
+│   ├── admin/
+│   │   ├── KpiCard.tsx             # Metric tile (label, value, optional trend)
+│   │   └── AdminChart.tsx          # Recharts bar/line chart for admin sections
 │   └── ui/
 │       ├── AuthModal.tsx           # Google OAuth + email sign in/up
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
@@ -191,9 +209,13 @@ src/
 | Dennis R. Timbrell routing to `/skating/99001` | Fixed | Removed fake rink stub (migration 0020); context-aware `venueHref()` in VenueCard |
 | Monday empty in Timbrell calendar | Fixed | Timezone bug: `new Date(dateParam)` parsed as UTC causing wrong weekday; fixed with `new Date(dateParam + "T00:00:00")` in both programs API routes |
 | Aquatic Fitness sub_activity wrong | Fixed | Migration 0021 corrected "Aquatic Fitness: …" from "Leisure Swim" → "Aquafit" |
+| Ball Hockey misclassified as Skating | Fixed | `inferActivityType` matched "hockey" broadly; added early guard for "ball hockey" → "sports"; migration 0025 backfilled DB |
+| Baseball results incomplete | Fixed | `q` text search in `/api/programs-search` was only checking `activity_title`; now ORs `course_title` too |
 | Dropin dedup wrong unique key | Fixed | Was (course_id, location_id), now (+first_date) |
 | PostGIS in extensions schema | Fixed | Add `set search_path to public, extensions` to all migrations |
 | Next.js 15 params are Promise | Fixed | Always `await params` in dynamic routes |
+| AbortError "lock broken" on all pages | Fixed | Next.js 15 Web Lock cookie race; `createClient()` in `server.ts` now catches AbortError at both `await cookies()` and `cookieStore.getAll()`, falling back to anonymous session; same guard in `auth/callback/route.ts`; handler-level catch in all `/api/favourites` handlers |
+| Admin dashboard dark theme mismatch | Fixed | Restyled `/internal-ops-findrecto` + login page to match site-wide palette: `#f5f2ec` bg, white cards, brand green Fraunces headings, gray-100 borders |
 
 ---
 
@@ -216,10 +238,37 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=
-NEXT_PUBLIC_MAPBOX_TOKEN=   # public token (pk.eyJ1...) — styles:read, tiles:read, fonts:read
+NEXT_PUBLIC_MAPBOX_TOKEN=        # public token (pk.eyJ1...) — styles:read, tiles:read, fonts:read
+NEXT_PUBLIC_POSTHOG_KEY=         # phc_... — browser PostHog project key
+NEXT_PUBLIC_POSTHOG_HOST=        # https://us.i.posthog.com
+POSTHOG_PRIVATE_KEY=             # phx_... — server-only, for HogQL Query API
+POSTHOG_PROJECT_ID=              # numeric PostHog project ID
+ADMIN_SECRET=                    # passphrase for /internal-ops-findrecto (64-char hex)
 ```
 
 Never commit `.env.local`. Keys are in Supabase dashboard → Settings → API.
+
+### PostHog Events Tracked
+| Event | Where | Key Properties |
+|---|---|---|
+| `$pageview` | PostHogProvider | `$current_url` |
+| `auth_login` | useAuth, AuthModal | `method` (google/email) |
+| `auth_signup` | AuthModal | `method` (email) |
+| `dropin_search` | DropInsSection | `activity_type, sub_activity, date, time_of_day, location_mode, district` |
+| `dropin_search_empty` | DropInsSection | same |
+| `dropin_result_venue_click` | DropInResultsTable | `location_id, location_name, activity_type` |
+| `programs_search` | ProgramsSection | `activity_type, sub_activity, date_from, date_to, time_of_day, age_category, location_mode, district, query` |
+| `programs_search_empty` | ProgramsSection | same |
+| `programs_result_venue_click` | ProgramsResultsTable | `location_id, location_name, activity_type, sub_activity` |
+| `map_near_me_click` | VenuesSection | `tab` |
+| `venues_filter_applied` | VenuesSection | `activity_type, sub_activity, view_mode` |
+| `venues_view_toggle` | VenuesSection | `view_mode` |
+| `venue_card_click` | VenueCard | `location_id, location_name, activity_type` |
+| `map_marker_click` | VenueMapView, DropInMapView | `location_id, location_name` |
+| `favourite_add` / `favourite_remove` | useFavourite | `location_id, location_name` |
+| `timetable_view` | Timetable | `location_id, view, sub_filter` |
+| `venue_detail_view` | /venues/[id] | `location_id, location_name` |
+| `rink_detail_view` | /skating/[id] | `asset_id, location_name` |
 
 ---
 
@@ -266,4 +315,8 @@ npx tsc --noEmit                               # Check for type errors
 | 16 | Activities page nav redesign: replaced pill toggle with border-2 icon+text tab cards (Community Centres / Drop-in Activities / Registered Programs). Search bar white bg. View toggle reordered Map→Grid→List with labels. Compact list VenueCard (horizontal row, dot indicator, tighter gap-1.5). Registered Programs placeholder tab. |
 | 17 | Timetable UX overhaul: default to Calendar view, reordered tabs (Calendar→Today→Week), compact ‹/› prev-next navigation, sport + sub-filter grouped flex-nowrap, compact alternating week-list rows. Map coord backfill: amber warning banner in VenueMapView for venues missing coords; script `geocode-all-missing-coords.mjs` paginates all 63K dropin/program rows to find 315 active location IDs, geocodes 227 with missing lat/lng via Nominatim; migration 0018 applied — aquatics map improved from 5/16 → 16/16 venues. |
 | 18 | Routing + data-quality fixes: RPC for activity location IDs (0019) bypasses Supabase 1000-row cap; remove fake Timbrell rink stub (0020); context-aware VenueHref in VenueCard routes to /skating only when skating filter active; filter context preserved in URL (?activity=&sub=) when navigating to venue; Timetable accepts defaultSubFilter prop; timezone bug fixed in both programs API routes (new Date + "T00:00:00"); Aquatic Fitness sub_activity corrected to Aquafit (0021). |
-| Next | Vercel deploy, Registered Programs feature, analytics, polish |
+| 19 | Drop-in Filter UX overhaul: layout reorder (Date + Time side-by-side, Location moved up); blinking border attention indicators on all filter sections (pulse stops on touch, border persists); Near Me chip highlighted in brand green; activity type converted to dropdown select; skating sub-type buttons (Leisure/Shinny/Learn to Skate); Leisure opens age filter with default "All Ages" + "Adult 19+"; fitness/aquatics sub-filters allow multi-select; Find Drop-ins button pulses until clicked; dynamic result refresh after first search when sub-filters change. |
+| 20 | Venue routing migration + filter preservation: all drop-in search result venue links unified to /venues/{location_id} (was /skating/{asset_id} for rinks, no link for non-rink venues); same fix applied to DropInMapView popup; drop-in filter state encoded in ?returnTo=… URL param on venue links; venue detail Back button uses returnTo href; filter state initialized from URL params on mount; auto-search on back-nav via autoSearchDone ref. |
+| 21 | Registered Programs search: /api/programs-search route (date overlap, null-safe age OR filter, time-of-day, activity/sub, geo/district, text ILIKE, 300-row cap, client-side sort); ProgramsFilterPanel (Date From/To, Time of Day dropdown, Location Near Me/District, Activity + sub-activity chips from SUB_ACTIVITY_MAP, Age Category select, text search, pulsing Find Programs button); ProgramsResultsTable (8 columns, StatusBadge Full/Open/Cancelled, returnTo venue links, truncation warning); programs tab wired into /activities page with URL-param state init + auto-search on back-nav. |
+| 22 | Bug fixes + UX: Ball Hockey reclassified from skating → sports (migration 0025 + ingest-ckan guard); "Ball Hockey" added to SHARED_SPORTS config; baseball/programs q-search fixed to OR both activity_title + course_title; ProgramsResultsTable sortable columns (Program/Location/Dates with ↑↓ arrows, default date desc); VenuesSection filter UX — district + venue-type dropdowns reduced width (~40%) + blinking brand border; All Activities dropdown blinking border; codebase refactor complete (REFACTOR_PLAN 100%). |
+| Next | Vercel deploy, analytics, price/fee data investigation |

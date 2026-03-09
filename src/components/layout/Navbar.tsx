@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { AuthModal } from "@/components/ui/AuthModal";
-import { User, LogOut, Heart } from "lucide-react";
+import { User, LogOut, LayoutDashboard } from "lucide-react";
 
 export function Navbar() {
   const { user, loading, signOut } = useAuth();
@@ -46,12 +46,12 @@ export function Navbar() {
                     {showMenu && (
                       <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48 z-50">
                         <Link
-                          href="/favourites"
+                          href="/dashboard"
                           onClick={() => setShowMenu(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <Heart size={14} />
-                          My Favourites
+                          <LayoutDashboard size={14} />
+                          Dashboard
                         </Link>
                         <button
                           onClick={() => { signOut(); setShowMenu(false); }}

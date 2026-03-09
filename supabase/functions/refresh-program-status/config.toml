@@ -1,0 +1,5 @@
+[functions.refresh-program-status]
+verify_jwt = false
+
+[[functions.refresh-program-status.cron]]
+schedule = "0 8 * * *"  # Every day at 08:00 UTC (04:00 ET)

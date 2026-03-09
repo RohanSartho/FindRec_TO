@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useFavourites } from "@/lib/context/FavouritesContext";
+import posthog from "posthog-js";
 
-export function useFavourite(locationId: number) {
+export function useFavourite(locationId: number, locationName?: string) {
   const { favouriteLocationIds, toggle: contextToggle } = useFavourites();
   const [loading, setLoading] = useState(false);
 
@@ -12,7 +13,14 @@ export function useFavourite(locationId: number) {
   const toggle = async () => {
     setLoading(true);
     try {
-      return await contextToggle(locationId);
+      const result = await contextToggle(locationId);
+      if (!result?.requiresAuth) {
+        posthog.capture(isFavourited ? "favourite_remove" : "favourite_add", {
+          location_id:   locationId,
+          location_name: locationName ?? null,
+        });
+      }
+      return result;
     } finally {
       setLoading(false);
     }

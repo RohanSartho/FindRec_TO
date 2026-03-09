@@ -5,10 +5,12 @@ import { MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
+import posthog from "posthog-js";
 
 interface Session {
   course_id: number;
   course_title: string;
+  activity_type: string | null;
   start_time: string;
   end_time: string;
   min_age_months: number | null;
@@ -22,6 +24,33 @@ interface Session {
   } | null;
 }
 
+function VenueTypeBadge({ session }: { session: Session }) {
+  const rinkType = session.locations?.rinks?.[0]?.rink_type;
+  if (rinkType === "outdoor") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        Outdoor
+      </span>
+    );
+  }
+  if (rinkType === "indoor") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+        Indoor
+      </span>
+    );
+  }
+  // Non-skating activities (aquatics, fitness, etc.) are always indoor
+  if (session.activity_type && session.activity_type !== "skating") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+        Indoor
+      </span>
+    );
+  }
+  return <span className="text-gray-400 text-xs">—</span>;
+}
+
 interface Group {
   program_type: string;
   session_count: number;
@@ -32,12 +61,14 @@ interface DropInResultsTableProps {
   groups: Group[];
   total: number;
   date: string;
+  returnTo?: string;
 }
 
 export function DropInResultsTable({
   groups,
   total,
   date,
+  returnTo,
 }: DropInResultsTableProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
@@ -146,16 +177,19 @@ export function DropInResultsTable({
                       <th className="text-left px-5 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Location
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Address
                       </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
                         District
                       </th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
+                        Venue Type
+                      </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Time
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Ages
                       </th>
                     </tr>
@@ -167,27 +201,21 @@ export function DropInResultsTable({
                         className="hover:bg-brand/5 transition"
                       >
                         <td className="px-5 py-3">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {session.locations?.rinks?.[0]?.asset_id ? (
-                              <Link
-                                href={`/skating/${session.locations.rinks[0].asset_id}`}
-                                className="font-medium text-gray-900 hover:text-brand transition"
-                              >
-                                {session.locations?.name ?? "Unknown"}
-                              </Link>
-                            ) : (
-                              <span className="font-medium text-gray-900">
-                                {session.locations?.name ?? "Unknown"}
-                              </span>
-                            )}
-                            {session.locations?.rinks?.[0]?.rink_type === "outdoor" && (
-                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
-                                Free
-                              </span>
-                            )}
-                          </div>
+                          <Link
+                            href={`/venues/${session.location_id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-gray-900 hover:text-brand transition"
+                            onClick={() => posthog.capture("dropin_result_venue_click", {
+                              location_id:   session.location_id,
+                              location_name: session.locations?.name ?? null,
+                              activity_type: session.activity_type,
+                            })}
+                          >
+                            {session.locations?.name ?? "Unknown"}
+                          </Link>
                         </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-1 text-xs">
                             <MapPin size={12} className="shrink-0 text-gray-400" />
                             {session.locations?.address ? (
@@ -209,12 +237,15 @@ export function DropInResultsTable({
                             {session.locations?.district ?? "—"}
                           </span>
                         </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <VenueTypeBadge session={session} />
+                        </td>
                         <td className="px-4 py-3">
                           <span className="font-medium text-gray-900 whitespace-nowrap">
                             {formatTimeRange(session.start_time, session.end_time)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">
+                        <td className="px-4 py-3">
                           <span className="text-xs text-gray-600">
                             {formatAgeRange(
                               session.min_age_months,

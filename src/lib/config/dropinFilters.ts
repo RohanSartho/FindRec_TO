@@ -175,54 +175,84 @@ export interface SubActivityOption {
  * Sub-activity options grouped by parent activity_type.
  * Values match the normalized sub_activity column in the DB.
  */
+// ── Shared sub-activity entries (identical in both drop-in and registered maps) ──
+
+const SHARED_FITNESS: SubActivityOption[] = [
+  { value: "Yoga",      label: "Yoga" },
+  { value: "Pilates",   label: "Pilates" },
+  { value: "Zumba",     label: "Zumba" },
+  { value: "Cardio",    label: "Cardio / Bootcamp" },
+  { value: "Tai Chi",   label: "Tai Chi" },
+];
+
+const SHARED_ARTS: SubActivityOption[] = [
+  { value: "Dance",    label: "Dance" },
+  { value: "Painting", label: "Painting / Drawing" },
+  { value: "Pottery",  label: "Pottery / Ceramics" },
+  { value: "Crafts",   label: "Crafts" },
+  { value: "Music",    label: "Music" },
+  { value: "Drama",    label: "Drama / Theatre" },
+];
+
+const SHARED_SPORTS: SubActivityOption[] = [
+  { value: "Pickleball",   label: "Pickleball" },
+  { value: "Soccer",       label: "Soccer" },
+  { value: "Basketball",   label: "Basketball" },
+  { value: "Badminton",    label: "Badminton" },
+  { value: "Volleyball",   label: "Volleyball" },
+  { value: "Tennis",       label: "Tennis" },
+  { value: "Baseball",     label: "Baseball / Softball" },
+  { value: "Squash",       label: "Squash" },
+  { value: "Ball Hockey", label: "Ball Hockey" },
+  { value: "Floor Hockey", label: "Floor Hockey" },
+  { value: "Dodgeball",    label: "Dodgeball" },
+  { value: "Table Tennis", label: "Table Tennis" },
+  { value: "Lacrosse",     label: "Lacrosse" },
+  { value: "Cricket",      label: "Cricket" },
+];
+
 export const SUB_ACTIVITY_MAP: Record<string, SubActivityOption[]> = {
   skating: [
-    { value: "Public Skating",  label: "Public Skating" },
-    { value: "Hockey",          label: "Hockey / Shinny" },
-    { value: "Figure Skating",  label: "Figure Skating" },
-    { value: "Speed Skating",   label: "Speed Skating" },
-    { value: "Ringette",        label: "Ringette" },
-    { value: "Broomball",       label: "Broomball" },
+    { value: "Public Skating", label: "Public Skating" },
+    { value: "Hockey",         label: "Hockey / Shinny" },
+    { value: "Figure Skating", label: "Figure Skating" },
+    { value: "Speed Skating",  label: "Speed Skating" },
+    { value: "Ringette",       label: "Ringette" },
+    { value: "Broomball",      label: "Broomball" },
   ],
   aquatics: [
-    { value: "Leisure Swim",    label: "Leisure Swim" },
-    { value: "Lane Swimming",   label: "Lane Swimming" },
-    { value: "Aquafit",         label: "Aquafit" },
-    { value: "Swim Lessons",    label: "Swim Lessons" },
+    { value: "Leisure Swim",      label: "Leisure Swim" },
+    { value: "Lane Swimming",     label: "Lane Swimming" },
+    { value: "Aquafit",           label: "Aquafit" },
+    { value: "Swim Lessons",      label: "Swim Lessons" },
     { value: "Parent & Tot Swim", label: "Parent & Tot Swim" },
-    { value: "Diving",          label: "Diving" },
-    { value: "Water Polo",      label: "Water Polo" },
+    { value: "Diving",            label: "Diving" },
+    { value: "Water Polo",        label: "Water Polo" },
   ],
-  fitness: [
-    { value: "Yoga",      label: "Yoga" },
-    { value: "Pilates",   label: "Pilates" },
-    { value: "Zumba",     label: "Zumba" },
-    { value: "Cardio",    label: "Cardio / Bootcamp" },
-    { value: "Tai Chi",   label: "Tai Chi" },
+  fitness: SHARED_FITNESS,
+  arts:    SHARED_ARTS,
+  sports:  [...SHARED_SPORTS, { value: "Ringette", label: "Ringette" }, { value: "Broomball", label: "Broomball" }],
+};
+
+/**
+ * Sub-activity options for Registered Programs.
+ * Skating/aquatics differ from drop-in; fitness/arts/sports share base entries.
+ */
+export const PROGRAMS_SUB_ACTIVITY_MAP: Record<string, SubActivityOption[]> = {
+  skating: [
+    { value: "Public Skating", label: "Learn to Skate" },
+    { value: "Hockey",         label: "Hockey / Shinny" },
+    { value: "Figure Skating", label: "Figure Skating" },
   ],
-  arts: [
-    { value: "Dance",    label: "Dance" },
-    { value: "Painting", label: "Painting / Drawing" },
-    { value: "Pottery",  label: "Pottery / Ceramics" },
-    { value: "Crafts",   label: "Crafts" },
-    { value: "Music",    label: "Music" },
-    { value: "Drama",    label: "Drama / Theatre" },
+  aquatics: [
+    { value: "Swim Lessons",        label: "Swim Lessons" },
+    { value: "Parent & Tot Swim",   label: "Parent & Tot Swim" },
+    { value: "Ultra Swim",          label: "Ultra Swim" },
+    { value: "Adult Swim",          label: "Adult Swim" },
+    { value: "Aquatic Leadership",  label: "Aquatic Leadership" },
+    { value: "Swim Team",           label: "Swim Team" },
   ],
-  sports: [
-    { value: "Pickleball",   label: "Pickleball" },
-    { value: "Soccer",       label: "Soccer" },
-    { value: "Basketball",   label: "Basketball" },
-    { value: "Badminton",    label: "Badminton" },
-    { value: "Volleyball",   label: "Volleyball" },
-    { value: "Tennis",       label: "Tennis" },
-    { value: "Baseball",     label: "Baseball / Softball" },
-    { value: "Squash",       label: "Squash" },
-    { value: "Floor Hockey", label: "Floor Hockey" },
-    { value: "Dodgeball",    label: "Dodgeball" },
-    { value: "Table Tennis", label: "Table Tennis" },
-    { value: "Lacrosse",     label: "Lacrosse" },
-    { value: "Cricket",      label: "Cricket" },
-    { value: "Ringette",     label: "Ringette" },
-    { value: "Broomball",    label: "Broomball" },
-  ],
+  fitness: SHARED_FITNESS,
+  arts:    SHARED_ARTS,
+  sports:  SHARED_SPORTS,
 };

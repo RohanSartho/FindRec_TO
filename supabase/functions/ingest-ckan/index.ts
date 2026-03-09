@@ -11,6 +11,18 @@ function nullify(val: any): any {
   return val ?? null;
 }
 
+/** Normalize a raw CKAN "Status / Information" string to a canonical value. */
+function normalizeStatus(raw: string | null): string | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (lower.includes("waitlist") || lower.includes("wait list")) return "Waitlist Available";
+  if (lower.includes("full")) return "Full";
+  if (lower.includes("cancel")) return "Cancelled";
+  if (lower.includes("started") || lower.includes("in progress")) return "This course has started";
+  if (lower.includes("open") || lower.includes("avail")) return "Open";
+  return raw;
+}
+
 function parseNonIsoDate(raw: string): string | null {
   if (!raw) return null;
   const months: Record<string, string> = {
@@ -49,6 +61,7 @@ function parseTime(hour: number | string, min: number | string): string | null {
 
 function inferActivityType(category: string, title: string): string {
   const val = `${category} ${title}`.toLowerCase();
+  if (val.includes("ball hockey")) return "sports";
   if (val.includes("skat") || val.includes("hockey") || val.includes("shinny") || val.includes("ice rink") || val.includes("figure skating") || val.includes("speed skate") || val.includes("ringette") || val.includes("broomball")) return "skating";
   if (val.includes("swim") || val.includes("pool") || val.includes("aqua") || val.includes("diving") || val.includes("water polo")) return "aquatics";
   if (val.includes("fitness") || val.includes("yoga") || val.includes("cardio") || val.includes("pilates") || val.includes("zumba") || val.includes("tai chi") || val.includes("taichi") || val.includes("bootcamp") || val.includes("boot camp") || val.includes("weight training") || val.includes("stretching")) return "fitness";
@@ -352,7 +365,7 @@ Deno.serve(async (_req) => {
             min_age_months: minAge ? Number(minAge) : null,
             max_age_months: maxAge ? Number(maxAge) : null,
             registration_date: nullify(r["Registration Date"]),
-            status: nullify(r["Status / Information"]),
+            status: normalizeStatus(nullify(r["Status / Information"])),
             activity_url: nullify(r["Activity URL"]),
             program_category: nullify(r["Program Category"]),
             sub_activity: inferSubActivity(at, actTitle, crsTitle),

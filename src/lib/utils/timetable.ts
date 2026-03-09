@@ -50,7 +50,7 @@ export function compactTitle(title: string): string {
 
 export function activityTypeColor(type: string): string {
   const map: Record<string, string> = {
-    skating: "bg-brand/10 text-brand",
+    skating: "bg-sky-50 text-sky-500",
     fitness: "bg-orange-50 text-orange-700",
     aquatics: "bg-cyan-50 text-cyan-700",
     arts: "bg-purple-50 text-purple-700",

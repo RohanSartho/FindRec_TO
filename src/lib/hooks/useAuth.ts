@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import posthog from "posthog-js";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,11 +14,20 @@ export function useAuth() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setLoading(false);
+      // Identify existing session on page load
+      if (user) posthog.identify(user.id, { email: user.email });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
+      (event, session) => {
+        const u = session?.user ?? null;
+        setUser(u);
+        if (event === "SIGNED_IN" && u) {
+          posthog.identify(u.id, { email: u.email });
+        }
+        if (event === "SIGNED_OUT") {
+          posthog.reset();
+        }
       }
     );
 
@@ -25,10 +35,12 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = async () => {
+    posthog.capture("auth_login", { method: "google" });
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        // After OAuth exchange, callback route reads ?next= and redirects there
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
   };

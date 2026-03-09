@@ -96,6 +96,32 @@ Google Calendar or download an .ics file.
 
 ---
 
+## ❤️ User Dashboard — Future Features
+
+### [FAV-002] Drop-in Alerts
+**Priority:** Medium
+**Context:** Users want to be reminded when a recurring drop-in (e.g. "Leisure Skate at Don Mills") is happening this week — without tracking a specific date. Save a (location_id, course_title) pair; the dashboard queries the `dropins` table for matching sessions in the next 7 days and displays them. Sessions that have passed fall off automatically — no stale data problem.
+**Acceptance Criteria:**
+- New `user_dropin_alerts` table: `(id, user_id, location_id, course_title, created_at)`
+- Dashboard "Drop-in Alerts" section: fetch upcoming matching sessions (next 7 days), show date/time/venue
+- Add/remove alert from the drop-in search results row
+- Empty state when no upcoming sessions match
+**Effort:** M (schema migration + API route + dashboard section + results-row button)
+
+---
+
+### [FAV-003] Program Watchlist
+**Priority:** Medium
+**Context:** Users want to track a specific registered program (e.g. "Swim Lessons at Matty Eckler") — either to know when registration opens or to monitor if a Full program gets a spot. Save a (course_id, location_id) pair; dashboard shows current status (Open/Waitlist/Full/Cancelled) + registration dates + link to toronto.ca to register.
+**Acceptance Criteria:**
+- New `user_program_watchlist` table: `(id, user_id, course_id, location_id, created_at)`
+- Dashboard "Program Watchlist" section: fetch current status from `programs` table, show status badge + dates + enroll link
+- Add/remove from `ProgramsResultsTable` row
+- Stale entry handling: if `end_date` has passed, show "Ended" badge with option to remove
+**Effort:** M (schema migration + API route + dashboard section + results-row button)
+
+---
+
 ## 📊 Analytics & Admin
 
 ### [ADMIN-001] Sync Health Dashboard

@@ -6,6 +6,7 @@ import type { MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import posthog from "posthog-js";
 import { formatTimeRange } from "@/lib/utils/timetable";
 
 const TORONTO_CENTER = { longitude: -79.38, latitude: 43.70, zoom: 11 };
@@ -43,9 +44,10 @@ interface DropInMapViewProps {
   groups: Group[];
   userLat?: number | null;
   userLng?: number | null;
+  returnTo?: string;
 }
 
-export function DropInMapView({ groups, userLat, userLng }: DropInMapViewProps) {
+export function DropInMapView({ groups, userLat, userLng, returnTo }: DropInMapViewProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const mapRef = useRef<MapRef>(null);
 
@@ -80,8 +82,14 @@ export function DropInMapView({ groups, userLat, userLng }: DropInMapViewProps) 
 
   const handleMarkerClick = useCallback((id: number, e: { originalEvent: { stopPropagation: () => void } }) => {
     e.originalEvent.stopPropagation();
-    setSelectedId((prev) => (prev === id ? null : id));
-  }, []);
+    setSelectedId((prev) => {
+      if (prev !== id) {
+        const pin = pins.find((p) => p.locationId === id);
+        posthog.capture("map_marker_click", { location_id: id, location_name: pin?.name ?? null });
+      }
+      return prev === id ? null : id;
+    });
+  }, [pins]);
 
   // Fly to user location when Near Me is active
   useEffect(() => {
@@ -174,11 +182,7 @@ export function DropInMapView({ groups, userLat, userLng }: DropInMapViewProps) 
                 ))}
               </div>
               <Link
-                href={
-                  selected.assetId
-                    ? `/skating/${selected.assetId}`
-                    : `/venues/${selected.locationId}`
-                }
+                href={`/venues/${selected.locationId}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
                 className="inline-block text-xs text-brand font-medium hover:underline pt-0.5"
               >
                 View schedule →

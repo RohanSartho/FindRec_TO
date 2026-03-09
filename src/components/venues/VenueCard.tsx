@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Heart, MapPin, House, TreePine, Waves, Palette, Dumbbell, Snowflake, Trophy } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import posthog from "posthog-js";
 
 const ACTIVITY_ICONS: Record<string, LucideIcon> = {
   aquatics: Waves,
@@ -120,6 +121,11 @@ export function VenueCard({
           href={href}
           className="absolute inset-0 rounded-2xl z-10"
           aria-label={venue.name}
+          onClick={() => posthog.capture("venue_card_click", {
+            location_id:   venue.id,
+            location_name: venue.name,
+            activity_type: activeActivity ?? null,
+          })}
         />
 
         {/* Header row */}

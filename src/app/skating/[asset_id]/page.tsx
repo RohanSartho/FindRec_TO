@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Building2, TreePine, Users, Ruler, ExternalLink } from "lucide-react";
+import { ArrowLeft, MapPin, House, TreePine, Ruler, ExternalLink } from "lucide-react";
 import { Timetable } from "@/components/rinks/Timetable";
+import { AnalyticsPageEvent } from "@/components/analytics/AnalyticsPageEvent";
 
 interface PageProps {
   params: Promise<{ asset_id: string }>;
@@ -40,6 +41,8 @@ export default async function RinkDetailPage({ params }: PageProps) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <AnalyticsPageEvent event="rink_detail_view" properties={{ asset_id: parseInt(asset_id), location_name: displayName }} />
+
       {/* Back button */}
       <Link
         href="/activities"
@@ -52,15 +55,14 @@ export default async function RinkDetailPage({ params }: PageProps) {
       {/* Header */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            {rink.rink_type === "indoor" ? (
-              <Building2 size={16} className="text-brand" />
-            ) : (
-              <TreePine size={16} className="text-green-500" />
-            )}
-            <span className="text-sm text-gray-600 font-medium capitalize">
-              {rink.rink_type} rink
-            </span>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mb-2 ${
+            rink.rink_type === "indoor" ? "bg-red-50 text-red-700" : "bg-green-100 text-green-700"
+          }`}>
+            {rink.rink_type === "indoor"
+              ? <House size={13} className="shrink-0" />
+              : <TreePine size={13} className="shrink-0" />
+            }
+            {rink.rink_type === "indoor" ? "Indoor" : "Outdoor"}
           </div>
           <h1 className="text-2xl font-bold leading-tight" style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}>
             {displayName}
@@ -101,15 +103,6 @@ export default async function RinkDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {rink.operated_by && (
-            <div className="flex items-start gap-2 text-gray-700">
-              <Users size={15} className="mt-0.5 shrink-0 text-gray-500" />
-              <div>
-                <p>{rink.operated_by}</p>
-                <p className="text-sm text-gray-500">Operated by</p>
-              </div>
-            </div>
-          )}
 
           {(rink.pad_length_ft || rink.ice_pad_size) && (
             <div className="flex items-start gap-2 text-gray-700">
@@ -125,17 +118,6 @@ export default async function RinkDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {rink.has_boards !== null && (
-            <div className="flex items-center gap-2 text-gray-700">
-              <span className={`text-sm px-2 py-0.5 rounded-full ${
-                rink.has_boards
-                  ? "bg-green-50 text-green-700"
-                  : "bg-gray-50 text-gray-600"
-              }`}>
-                {rink.has_boards ? "Has boards" : "No boards"}
-              </span>
-            </div>
-          )}
 
           {loc?.district && (
             <div className="text-sm text-gray-600 col-span-full">
@@ -158,15 +140,6 @@ export default async function RinkDetailPage({ params }: PageProps) {
               Get Directions
             </a>
           )}
-          <a
-            href={`https://www.google.com/search?q=${encodeURIComponent(displayName + " Toronto Parks Recreation")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-brand hover:underline"
-          >
-            <ExternalLink size={13} />
-            Search online
-          </a>
           {torontoUrl && (
             <a
               href={torontoUrl}
@@ -175,7 +148,7 @@ export default async function RinkDetailPage({ params }: PageProps) {
               className="flex items-center gap-1.5 text-sm text-brand hover:underline"
             >
               <ExternalLink size={13} />
-              toronto.ca official page
+              facility Toronto.ca official page
             </a>
           )}
         </div>

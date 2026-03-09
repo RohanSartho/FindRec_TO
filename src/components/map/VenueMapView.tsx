@@ -6,6 +6,7 @@ import type { MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import posthog from "posthog-js";
 import { activityTypeColor } from "@/lib/utils/timetable";
 import type { Venue } from "@/components/venues/VenueCard";
 
@@ -32,8 +33,14 @@ export function VenueMapView({ venues, userLat, userLng, activeActivity, activeS
 
   const handleMarkerClick = useCallback((id: number, e: { originalEvent: { stopPropagation: () => void } }) => {
     e.originalEvent.stopPropagation();
-    setSelectedId((prev) => (prev === id ? null : id));
-  }, []);
+    setSelectedId((prev) => {
+      if (prev !== id) {
+        const venue = pins.find((p) => p.id === id);
+        posthog.capture("map_marker_click", { location_id: id, location_name: venue?.name ?? null });
+      }
+      return prev === id ? null : id;
+    });
+  }, [pins]);
 
   // Fly to user location when Near Me is activated while map is visible
   useEffect(() => {

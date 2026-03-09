@@ -3,18 +3,20 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, ExternalLink, House, TreePine } from "lucide-react";
 import { Timetable } from "@/components/rinks/Timetable";
+import { VenueFavouriteButton } from "@/components/venues/VenueFavouriteButton";
+import { AnalyticsPageEvent } from "@/components/analytics/AnalyticsPageEvent";
 
 type SportFilter = "skating" | "aquatics" | "fitness" | "arts" | "sports" | "all";
 const VALID_SPORT_FILTERS: SportFilter[] = ["skating", "aquatics", "fitness", "arts", "sports", "all"];
 
 interface PageProps {
   params: Promise<{ location_id: string }>;
-  searchParams: Promise<{ activity?: string; sub?: string }>;
+  searchParams: Promise<{ activity?: string; sub?: string; returnTo?: string }>;
 }
 
 export default async function VenueDetailPage({ params, searchParams }: PageProps) {
   const { location_id } = await params;
-  const { activity, sub } = await searchParams;
+  const { activity, sub, returnTo } = await searchParams;
 
   // Map the incoming ?activity= query param to a valid SportFilter
   const defaultSportFilter: SportFilter =
@@ -35,30 +37,38 @@ export default async function VenueDetailPage({ params, searchParams }: PageProp
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <AnalyticsPageEvent event="venue_detail_view" properties={{ location_id: loc.id, location_name: loc.name }} />
+
       {/* Back button */}
       <Link
-        href="/activities"
+        href={returnTo ?? "/activities"}
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-6 transition"
       >
         <ArrowLeft size={16} />
-        Back to venues
+        {returnTo ? "Back to results" : "Back to venues"}
       </Link>
 
       {/* Header card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-        {loc.venue_type && (
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium mb-3 ${
-            loc.venue_type === "indoor"
-              ? "bg-red-50 text-red-700"
-              : "bg-green-100 text-green-700"
-          }`}>
-            {loc.venue_type === "indoor"
-              ? <House size={13} className="shrink-0" />
-              : <TreePine size={13} className="shrink-0" />
-            }
-            {loc.venue_type === "indoor" ? "Indoor" : "Outdoor"}
+        {/* Badge row + Save button */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            {loc.venue_type && (
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                loc.venue_type === "indoor"
+                  ? "bg-red-50 text-red-700"
+                  : "bg-green-100 text-green-700"
+              }`}>
+                {loc.venue_type === "indoor"
+                  ? <House size={13} className="shrink-0" />
+                  : <TreePine size={13} className="shrink-0" />
+                }
+                {loc.venue_type === "indoor" ? "Indoor" : "Outdoor"}
+              </div>
+            )}
           </div>
-        )}
+          <VenueFavouriteButton locationId={loc.id} />
+        </div>
         <h1
           className="text-2xl font-bold leading-tight mb-4"
           style={{ fontFamily: "var(--font-fraunces), serif", color: "#1a3a2a" }}

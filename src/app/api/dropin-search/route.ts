@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { DROPIN_FILTER_OPTIONS } from "@/lib/config/dropinFilters";
 
 // GET /api/dropin-search
 // Query params:
@@ -9,43 +10,19 @@ import { NextRequest, NextResponse } from "next/server";
 //   lat + lng + radius_km: geo filter (optional, radius in km)
 //
 // Returns drop-in sessions grouped by program type
-// Scoped to skating locations only
 
-const SKATING_COURSE_TITLES = [
-  "Leisure Skate",
-  "Leisure Skate (Unsupervised)",
-  "Leisure Skate (Pride Skate)",
-  "Adapted Leisure Skate with Family",
-  "Leisure Skate: Adult",
-  "Leisure Skate: Adult (Unsupervised)",
-  "Leisure Skate: Child with Caregiver",
-  "Leisure Skate: Child with Caregiver (unsupervised)",
-  "Leisure Skate: Child with Caregiver (Unsupervised)",
-  "Leisure Skate: Early Years with Caregiver",
-  "Leisure Skate: Early Years with Caregiver (Unsupervised)",
-  "Leisure Skate: Older Adult",
-  "Leisure Skate: Older Adult (Unsupervised)",
-  "Leisure Skate: Youth",
-  "Shinny",
-  "Shinny (Unsupervised)",
-  "Shinny (Women)",
-  "Shinny: Adult",
-  "Shinny: Adult (Unsupervised)",
-  "Shinny: Child",
-  "Shinny: Child (Girls)",
-  "Shinny: Child (Unsupervised)",
-  "Shinny: Child with Caregiver",
-  "Shinny: Child with Caregiver (unsupervised)",
-  "Shinny: Child with Caregiver (Unsupervised)",
-  "Shinny: Early Years with Caregiver",
-  "Shinny: Early Years with Caregiver (Unsupervised)",
-  "Shinny: Older Adult",
-  "Shinny: Older Adult (Unsupervised)",
-  "Shinny: Older Adult (Women) (Unsupervised)",
-  "Shinny: Youth",
-  "Shinny: Youth (Girls)",
-  "Shinny: Youth (Unsupervised)",
-];
+// Derived from DROPIN_FILTER_OPTIONS — single source of truth for skating course titles
+const SKATING_COURSE_TITLES = DROPIN_FILTER_OPTIONS.flatMap((o) => o.courseTitles);
+
+// Age category → [minMonths, maxMonths] for overlap filter
+const AGE_RANGES: Record<string, [number, number]> = {
+  baby:       [0,   36],
+  preschool:  [36,  72],
+  child:      [72,  144],
+  youth:      [144, 216],
+  adult:      [216, 720],
+  older:      [720, 9999],
+};
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -59,9 +36,12 @@ export async function GET(req: NextRequest) {
   const radiusKm = parseFloat(searchParams.get("radius_km") ?? "5");
   const timeStart = searchParams.get("time_start"); // e.g. "12:00:00"
   const timeEnd = searchParams.get("time_end");     // e.g. "17:00:00"
+  const ageCategoryParam = searchParams.get("age_category") ?? ""; // e.g. "adult"
   // Non-skating: filter by activity_type + optional sub_activity
   const activityTypeParam = searchParams.get("activity_type"); // e.g. "sports"
   const subActivityParam  = searchParams.get("sub_activity");  // e.g. "Pickleball"
+  const venueSearch = searchParams.get("venue_search") ?? "";
+  const nameSearch  = searchParams.get("q") ?? "";
   const isNonSkating = !!activityTypeParam && activityTypeParam !== "skating";
 
   // Resolve which course titles to filter on (skating mode only)
@@ -89,6 +69,15 @@ export async function GET(req: NextRequest) {
         .select("id")
         .eq("district", district);
       locationIds = (districtLocs ?? []).map((l: any) => l.id);
+      if (locationIds.length === 0) {
+        return NextResponse.json({ data: { groups: [], total: 0, date } });
+      }
+    } else if (venueSearch) {
+      const { data: venueLocs } = await supabase
+        .from("locations")
+        .select("id")
+        .ilike("name", `%${venueSearch}%`);
+      locationIds = (venueLocs ?? []).map((l: any) => l.id);
       if (locationIds.length === 0) {
         return NextResponse.json({ data: { groups: [], total: 0, date } });
       }
@@ -135,20 +124,40 @@ export async function GET(req: NextRequest) {
       if (locationIds) q = q.in("location_id", locationIds);
       if (timeStart) q = q.gt("end_time", timeStart);
       if (timeEnd)   q = q.lt("start_time", timeEnd);
+      if (nameSearch) q = q.ilike("course_title", `%${nameSearch}%`);
+      const ageRangeNS = AGE_RANGES[ageCategoryParam];
+      if (ageRangeNS) {
+        const [catMin, catMax] = ageRangeNS;
+        q = q.or(`max_age_months.gte.${catMin},max_age_months.is.null`);
+        if (catMax < 9999) q = q.or(`min_age_months.lte.${catMax},min_age_months.is.null`);
+      }
       const { data, error } = await q;
       if (error) throw error;
       sessions = data ?? [];
     } else {
-      // ── Skating: filter by course_title list ─────────────────────────────────
+      // ── Skating / name-search: filter by course_title list (skipped for pure name search) ───
       let q = supabase
         .from("dropins")
         .select(SELECT_FIELDS)
         .eq("first_date", date)
-        .in("course_title", activeTitles)
         .order("start_time", { ascending: true });
+      // Only restrict to skating titles when there is no free-text name search
+      // (or when an explicit program_types param was supplied). Without this guard,
+      // searching "Leisure swim" or "Lane swim" would return zero rows because those
+      // are aquatics course_titles, not skating titles.
+      if (!nameSearch || programTypesParam) {
+        q = q.in("course_title", activeTitles);
+      }
       if (locationIds) q = q.in("location_id", locationIds);
       if (timeStart) q = q.gt("end_time", timeStart);
       if (timeEnd)   q = q.lt("start_time", timeEnd);
+      if (nameSearch) q = q.ilike("course_title", `%${nameSearch}%`);
+      const ageRange = AGE_RANGES[ageCategoryParam];
+      if (ageRange) {
+        const [catMin, catMax] = ageRange;
+        q = q.or(`max_age_months.gte.${catMin},max_age_months.is.null`);
+        if (catMax < 9999) q = q.or(`min_age_months.lte.${catMax},min_age_months.is.null`);
+      }
       const { data, error } = await q;
       if (error) throw error;
       sessions = data ?? [];
@@ -168,9 +177,13 @@ export async function GET(req: NextRequest) {
         .map(([title, items]) => ({
           program_type: title,
           session_count: items.length,
-          sessions: items.sort((a: any, b: any) =>
-            (a.start_time ?? "").localeCompare(b.start_time ?? "")
-          ),
+          sessions: items.sort((a: any, b: any) => {
+            const nameA = (a.locations?.name ?? "").toLowerCase();
+            const nameB = (b.locations?.name ?? "").toLowerCase();
+            return nameA !== nameB
+              ? nameA.localeCompare(nameB)
+              : (a.start_time ?? "").localeCompare(b.start_time ?? "");
+          }),
         }));
       return NextResponse.json({ data: { groups, total: sessions.length, date } });
     }
@@ -227,9 +240,13 @@ export async function GET(req: NextRequest) {
       .map(([title, items]) => ({
         program_type: title,
         session_count: items.length,
-        sessions: items.sort((a: any, b: any) =>
-          (a.start_time ?? "").localeCompare(b.start_time ?? "")
-        ),
+        sessions: items.sort((a: any, b: any) => {
+          const nameA = (a.locations?.name ?? "").toLowerCase();
+          const nameB = (b.locations?.name ?? "").toLowerCase();
+          return nameA !== nameB
+            ? nameA.localeCompare(nameB)
+            : (a.start_time ?? "").localeCompare(b.start_time ?? "");
+        }),
       }));
 
     return NextResponse.json({

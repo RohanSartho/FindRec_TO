@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, Loader2, Minus, Plus } from "lucide-react";
+import posthog from "posthog-js";
 import {
   getTodayISO,
   formatTimeRange, formatAgeRange, compactTitle, activityTypeColor,
@@ -202,6 +203,23 @@ export function Timetable({
     year: "numeric", month: "long", day: "numeric",
   });
 
+  // ── Calendar drag-to-scroll ───────────────────────────────────────────────
+  const calScrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+
+  const onCalMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragScrollLeft.current = calScrollRef.current?.scrollLeft ?? 0;
+  };
+  const onCalMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !calScrollRef.current) return;
+    calScrollRef.current.scrollLeft = dragScrollLeft.current - (e.clientX - dragStartX.current);
+  };
+  const onCalMouseUp = () => { isDragging.current = false; };
+
   return (
     <div className="space-y-4">
 
@@ -215,7 +233,14 @@ export function Timetable({
           ] as { v: View; label: string }[]).map(({ v, label }) => (
             <button
               key={v}
-              onClick={() => setView(v)}
+              onClick={() => {
+                setView(v);
+                posthog.capture("timetable_view", {
+                  location_id: locationId ?? null,
+                  view: v,
+                  sub_filter: subFilter || null,
+                });
+              }}
               className={`px-4 py-2 text-sm font-medium transition ${
                 view === v ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-200"
               }`}
@@ -332,7 +357,14 @@ export function Timetable({
                       <p className="text-xs text-gray-500 mb-3">
                         Week of <span className="font-medium text-gray-700">{weekLabel}</span>
                       </p>
-                      <div className="overflow-x-auto rounded-xl border border-gray-200">
+                      <div
+                        ref={calScrollRef}
+                        className="overflow-x-auto rounded-xl border border-gray-200 cursor-grab active:cursor-grabbing select-none"
+                        onMouseDown={onCalMouseDown}
+                        onMouseMove={onCalMouseMove}
+                        onMouseUp={onCalMouseUp}
+                        onMouseLeave={onCalMouseUp}
+                      >
                         <table className="w-full border-collapse text-sm min-w-[600px]">
                           <thead>
                             <tr className="bg-gray-50">
