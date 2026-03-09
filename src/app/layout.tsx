@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import { FavouritesProvider } from "@/lib/context/FavouritesContext";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { PostHogProvider } from "@/components/analytics/PostHogProvider";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Suspense>
           <Navbar />
           <main>{children}</main>
+          <Footer />
         </FavouritesProvider>
         </PostHogProvider>
       </body>

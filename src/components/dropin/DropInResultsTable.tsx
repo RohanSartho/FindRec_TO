@@ -63,6 +63,7 @@ interface DropInResultsTableProps {
   total: number;
   date: string;
   returnTo?: string;
+  searchTrigger?: number;
 }
 
 export function DropInResultsTable({
@@ -70,6 +71,7 @@ export function DropInResultsTable({
   total,
   date,
   returnTo,
+  searchTrigger,
 }: DropInResultsTableProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
@@ -108,7 +110,7 @@ export function DropInResultsTable({
 
   return (
     <div className="space-y-4">
-      <ScrollHint />
+      <ScrollHint triggerKey={searchTrigger} />
       {/* Summary header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>

@@ -2,19 +2,27 @@
 
 import { useEffect, useState } from "react";
 
+interface ScrollHintProps {
+  /** Increment this on every search to re-show the hint. */
+  triggerKey?: number;
+}
+
 /**
- * Mobile-only scroll hint that fades out after 10 seconds.
+ * Mobile-only scroll hint that fades out after 30 seconds.
+ * Re-appears each time `triggerKey` changes (i.e. on every Find click).
  * Rendered fixed at the bottom of the screen so it's always visible
  * regardless of where in the table the user is.
  */
-export function ScrollHint() {
-  const [visible, setVisible] = useState(true);
+export function ScrollHint({ triggerKey = 0 }: ScrollHintProps) {
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Start fade-out at 8s so it's fully gone by 10s
-    const t = setTimeout(() => setVisible(false), 8000);
+    if (triggerKey === 0) return; // don't show on initial mount
+    setVisible(true);
+    // Start fade-out at 28s so it's fully gone by 30s
+    const t = setTimeout(() => setVisible(false), 28000);
     return () => clearTimeout(t);
-  }, []);
+  }, [triggerKey]);
 
   return (
     <div

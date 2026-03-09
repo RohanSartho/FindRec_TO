@@ -36,6 +36,7 @@ interface ProgramsResultsTableProps {
   programs: Program[];
   total: number;
   returnTo?: string;
+  searchTrigger?: number;
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ export function ProgramsResultsTable({
   programs,
   total,
   returnTo,
+  searchTrigger,
 }: ProgramsResultsTableProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<SortCol>("date");
@@ -209,7 +211,7 @@ export function ProgramsResultsTable({
 
   return (
     <div className="space-y-4">
-      <ScrollHint />
+      <ScrollHint triggerKey={searchTrigger} />
       {/* Summary */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm font-medium text-gray-900">

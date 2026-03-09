@@ -50,6 +50,7 @@ export function ProgramsSection() {
   const [results, setResults] = useState<{ programs: any[]; total: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewStyle, setViewStyle] = useState<"list" | "map">("list");
+  const [searchTrigger, setSearchTrigger] = useState(0);
 
   const search = useCallback(async () => {
     setLoading(true);
@@ -71,6 +72,7 @@ export function ProgramsSection() {
       }
       const json = await fetch(`/api/programs-search?${params}`).then((r) => r.json());
       setResults(json.data);
+      setSearchTrigger((k) => k + 1);
 
       const eventProps = {
         activity_type:  filters.activityType || null,
@@ -133,6 +135,7 @@ export function ProgramsSection() {
                 programs={results.programs}
                 total={results.total}
                 returnTo={returnTo}
+                searchTrigger={searchTrigger}
               />
             )}
           </>

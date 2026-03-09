@@ -47,6 +47,7 @@ export function DropInsSection() {
   const [results, setResults] = useState<{ groups: any[]; total: number; date: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewStyle, setViewStyle] = useState<"list" | "map">("list");
+  const [searchTrigger, setSearchTrigger] = useState(0);
 
   const search = useCallback(async () => {
     setLoading(true);
@@ -77,6 +78,7 @@ export function DropInsSection() {
 
       const json = await fetch(`/api/dropin-search?${params}`).then((r) => r.json());
       setResults(json.data);
+      setSearchTrigger((k) => k + 1);
 
       const eventProps = {
         activity_type:  filters.activityType || null,
@@ -133,6 +135,7 @@ export function DropInsSection() {
                 total={results.total}
                 date={results.date}
                 returnTo={buildReturnTo(filters)}
+                searchTrigger={searchTrigger}
               />
             )}
           </>

@@ -24,6 +24,22 @@
   animation: filterPulse 1.5s ease-in-out infinite;
 }
 
+/* Activity dropdown attention — border pulses bright green, text color pulses green */
+@keyframes activityBorderPulse {
+  0%, 100% { border-color: rgba(26, 58, 42, 0.3); }
+  50%       { border-color: #1a3a2a; }
+}
+@keyframes activityTextBlink {
+  0%, 100% { color: #9ca3af; }
+  50%       { color: #1a3a2a; }
+}
+.animate-activity-border-pulse {
+  animation: activityBorderPulse 1.1s ease-in-out infinite;
+}
+.animate-activity-text-blink {
+  animation: activityTextBlink 1.1s ease-in-out infinite;
+}
+
 /* Force light mode — prevent browser/OS dark mode from inverting the UI */
 html {
   color-scheme: only light;

@@ -445,8 +445,10 @@ export function DropInFilterPanel({
                 handleActivityChange(e.target.value);
               }}
               className={clsx(
-                "appearance-none w-full bg-white border rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand",
-                activityChosen ? "border-[#1a3a2a] border-2" : "border-gray-200"
+                "appearance-none w-full bg-white border rounded-lg px-2 py-1.5 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand",
+                activityChosen
+                  ? "border-[#1a3a2a] border-2 text-gray-700"
+                  : "border-2 animate-activity-border-pulse animate-activity-text-blink"
               )}
             >
               {!activityChosen && (
