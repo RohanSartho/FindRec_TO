@@ -40,7 +40,7 @@ export function useAuth() {
       provider: "google",
       options: {
         // After OAuth exchange, callback route reads ?next= and redirects there
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/`,
       },
     });
   };

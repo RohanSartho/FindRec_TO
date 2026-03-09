@@ -35,7 +35,7 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
       } else {
         posthog.capture(mode === "signin" ? "auth_login" : "auth_signup", { method: "email" });
         onClose();
-        router.push("/dashboard");
+        router.push("/");
       }
     } finally {
       setLoading(false);
