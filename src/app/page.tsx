@@ -71,7 +71,7 @@ export default function HomePage() {
 
         {/* Subheadline */}
         <p className="text-lg leading-relaxed max-w-lg mb-12" style={{ color: "#556b6e" }}>
-          Every community centre, rink, pool, and gym across Toronto — drop-in schedules,
+          Every community centre, rink, pool, and gym across Toronto: drop-in schedules,
           real-time availability, and map-based search. Filter by date, time, or distance.
           Recreation made simple.
         </p>

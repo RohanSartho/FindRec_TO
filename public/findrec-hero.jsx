@@ -77,7 +77,7 @@ export default function FindRecHero() {
 
         {/* Subheadline */}
         <p style={{ fontSize: "18px", color: "#556b6e", lineHeight: 1.7, maxWidth: "560px", marginBottom: "48px", fontWeight: 400 }}>
-          Every community centre, rink, pool, and gym across Toronto — drop-in schedules, real-time availability, and map-based search. Filter by date, time, or distance. Recreation made simple.
+          Every community centre, rink, pool, and gym across Toronto: drop-in schedules, real-time availability, and map-based search. Filter by date, time, or distance. Recreation made simple.
         </p>
 
         {/* CTA row */}
