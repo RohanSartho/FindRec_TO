@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-09 (AbortError definitive fix + admin dashboard restyle)
+> Last updated: 2026-03-09 (v2.2 — feedback widget Report Bug / Suggest Feature → Linear)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -139,7 +139,8 @@ src/
 │   │   ├── ProgramsFilterPanel.tsx # Date range (From/To), time of day, location, activity + sub-activity chips, age category, text search; same pulsing-border UX as DropInFilterPanel
 │   │   └── ProgramsResultsTable.tsx # Flat results table: Program | Location | Days | Dates | Time | Age | Status (Full/Open/Cancelled) | Price; venue links with returnTo
 │   ├── layout/
-│   │   └── Navbar.tsx              # Sticky nav, auth state, user menu
+│   │   ├── Navbar.tsx              # Sticky nav, auth state, user menu
+│   │   └── Footer.tsx              # Site footer — Open Data credit + version badge (v2.1) with hover changelog
 │   ├── map/
 │   │   ├── VenueMapView.tsx        # Mapbox map for Find Venues tab — markers + popup (name, address, chips, link)
 │   │   └── DropInMapView.tsx       # Mapbox map for Drop-ins tab — unique location markers with session time popups
@@ -157,10 +158,12 @@ src/
 │   │   └── AdminChart.tsx          # Recharts bar/line chart for admin sections
 │   └── ui/
 │       ├── AuthModal.tsx           # Google OAuth + email sign in/up
+│       ├── ScrollHint.tsx          # Mobile scroll-hint pill (triggerKey prop — re-shows on each Find click, 30s)
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
 ├── lib/
 │   ├── config/
-│   │   └── dropinFilters.ts        # Program filter options + districts + radius + ACTIVITY_FILTER_OPTIONS + SUB_ACTIVITY_MAP
+│   │   ├── dropinFilters.ts        # Program filter options + districts + radius + ACTIVITY_FILTER_OPTIONS + SUB_ACTIVITY_MAP
+│   │   └── version.ts              # APP_VERSION ("2.1") + VERSION_NOTES changelog map
 │   ├── context/
 │   │   └── FavouritesContext.tsx   # Single fetch, optimistic toggle, shared state
 │   ├── hooks/
@@ -319,4 +322,6 @@ npx tsc --noEmit                               # Check for type errors
 | 20 | Venue routing migration + filter preservation: all drop-in search result venue links unified to /venues/{location_id} (was /skating/{asset_id} for rinks, no link for non-rink venues); same fix applied to DropInMapView popup; drop-in filter state encoded in ?returnTo=… URL param on venue links; venue detail Back button uses returnTo href; filter state initialized from URL params on mount; auto-search on back-nav via autoSearchDone ref. |
 | 21 | Registered Programs search: /api/programs-search route (date overlap, null-safe age OR filter, time-of-day, activity/sub, geo/district, text ILIKE, 300-row cap, client-side sort); ProgramsFilterPanel (Date From/To, Time of Day dropdown, Location Near Me/District, Activity + sub-activity chips from SUB_ACTIVITY_MAP, Age Category select, text search, pulsing Find Programs button); ProgramsResultsTable (8 columns, StatusBadge Full/Open/Cancelled, returnTo venue links, truncation warning); programs tab wired into /activities page with URL-param state init + auto-search on back-nav. |
 | 22 | Bug fixes + UX: Ball Hockey reclassified from skating → sports (migration 0025 + ingest-ckan guard); "Ball Hockey" added to SHARED_SPORTS config; baseball/programs q-search fixed to OR both activity_title + course_title; ProgramsResultsTable sortable columns (Program/Location/Dates with ↑↓ arrows, default date desc); VenuesSection filter UX — district + venue-type dropdowns reduced width (~40%) + blinking brand border; All Activities dropdown blinking border; codebase refactor complete (REFACTOR_PLAN 100%). |
-| Next | Vercel deploy, analytics, price/fee data investigation |
+| 23 | Analytics + admin dashboard: PostHog HogQL server queries (17 parallel, 5-min cache); admin dashboard 7 sections (KpiCard + AdminChart); admin restyle to site palette; AbortError definitive fix (double try/catch in server.ts + auth/callback); maple leaf logo; ScrollHint mobile pill; Vercel deploy. **App version: v2.1** |
+| 24 | Feedback widget: fixed bottom-right bubble with sonar ripple rings; two-path menu (Report a Bug / Suggest a Feature); forms with title, description, urgency (bug), screenshot upload, optional pre-filled email; /api/feedback creates Linear issues via GraphQL (team + label UUIDs resolved at cold-start); /api/feedback/upload handles Linear fileUpload → S3 PUT → assetUrl in issue markdown. **App version: v2.2** |
+| Next | Price/fee data investigation, mobile UX polish, notification system |
