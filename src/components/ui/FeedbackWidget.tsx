@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 
-type Stage = "closed" | "menu" | "bug" | "feature" | "submitting" | "success";
+type Stage = "closed" | "menu" | "bug" | "feature" | "submitting" | "success" | "error";
 
 const inputCls =
   "w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand bg-white";
@@ -90,7 +90,7 @@ export function FeedbackWidget() {
       setStage("success");
       setTimeout(close, 2500);
     } catch {
-      close();
+      setStage("error");
     }
   };
 
@@ -104,6 +104,7 @@ export function FeedbackWidget() {
     feature: "Suggest a Feature",
     submitting: "Submitting…",
     success: "Thank you!",
+    error: "Something went wrong",
   };
 
   return (
@@ -283,6 +284,24 @@ export function FeedbackWidget() {
           {stage === "submitting" && (
             <div className="flex items-center justify-center py-10">
               <Loader2 size={28} className="animate-spin" style={{ color: "#1a3a2a" }} />
+            </div>
+          )}
+
+          {/* ── Error ── */}
+          {stage === "error" && (
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-red-50">
+                <X size={22} className="text-red-500" />
+              </div>
+              <p className="font-semibold text-gray-900 mb-1">Couldn&apos;t send feedback</p>
+              <p className="text-sm text-gray-400 mb-4">Something went wrong on our end.</p>
+              <button
+                onClick={() => open(type)}
+                className="text-sm font-medium underline underline-offset-2"
+                style={{ color: "#1a3a2a" }}
+              >
+                Try again
+              </button>
             </div>
           )}
 
