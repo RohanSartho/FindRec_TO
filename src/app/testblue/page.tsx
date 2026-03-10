@@ -162,7 +162,7 @@ export default function TestBluePage() {
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
-            <div className="text-sm font-bold" style={{ color: BLUE }}>100+ facilities</div>
+            <div className="text-sm font-bold" style={{ color: BLUE }}>500+ facilities</div>
             <div className="text-xs text-gray-500">community centres &amp; arenas</div>
           </div>
         </div>
