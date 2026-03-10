@@ -2,21 +2,26 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const ADMIN_PREFIX = "/internal-ops-findrecto";
+const ADMIN_LOGIN  = `${ADMIN_PREFIX}/login`;
+
+/** Routes that require a valid admin_token cookie. */
+const ADMIN_GUARDED = [ADMIN_PREFIX, "/testblue"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── Admin route guard ──────────────────────────────────────────────────────
-  // The login page itself is always accessible; everything else under
-  // /internal-ops-findrecto requires a valid admin_token cookie.
-  if (
-    pathname.startsWith(ADMIN_PREFIX) &&
-    pathname !== `${ADMIN_PREFIX}/login`
-  ) {
+  // /internal-ops-findrecto/* and /testblue/* require a valid admin_token
+  // cookie. The login page itself is always accessible.
+  const needsAdmin =
+    pathname !== ADMIN_LOGIN &&
+    ADMIN_GUARDED.some((prefix) => pathname.startsWith(prefix));
+
+  if (needsAdmin) {
     const token  = request.cookies.get("admin_token")?.value;
     const secret = process.env.ADMIN_SECRET;
     if (!secret || token !== secret) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL(ADMIN_LOGIN, request.url));
     }
   }
 
