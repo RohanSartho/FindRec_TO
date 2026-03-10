@@ -226,7 +226,7 @@ Deno.serve(async (_req) => {
           postal_code: nullify(r["Postal Code"]),
           ward: r["Ward"] ? String(r["Ward"]) : null,
           community_council: r["Community Council Area"] ?? null,
-          district: r["Community Council Area"] ?? null,
+          district: r["District"] ?? r["Community Council Area"] ?? null,
           ...(r["geometry"] ? { raw_geometry: JSON.parse(r["geometry"]) } : {}),
         };
       });
@@ -255,7 +255,7 @@ Deno.serve(async (_req) => {
             postal_code: r["Postal Code"] ?? null,
             ward: r["Ward"] ? String(r["Ward"]) : null,
             community_council: r["Community Council Area"] ?? null,
-            district: r["Community Council Area"] ?? null,
+            district: r["District"] ?? r["Community Council Area"] ?? null,
             ...(rawGeo ? { raw_geometry: rawGeo } : {}),
           };
         });
@@ -305,7 +305,7 @@ Deno.serve(async (_req) => {
             postal_code: r["Postal Code"] ?? null,
             ward: r["Ward"] ? String(r["Ward"]) : null,
             community_council: r["Community Council Area"] ?? null,
-            district: r["Community Council Area"] ?? null,
+            district: r["District"] ?? r["Community Council Area"] ?? null,
             ...(rawGeo ? { raw_geometry: rawGeo } : {}),
           };
         });
