@@ -275,9 +275,17 @@ export function ProgramsResultsTable({
                           Location<SortIcon col="location" />
                         </button>
                       </th>
+                      {/* Combined Days + Dates — mobile only (below md) */}
+                      <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide md:hidden">
+                        <button onClick={() => handleSort("date")} className="inline-flex items-center hover:text-brand transition">
+                          Schedule<SortIcon col="date" />
+                        </button>
+                      </th>
+                      {/* Separate Days — desktop only (md+) */}
                       <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell w-[64px]">
                         Days
                       </th>
+                      {/* Separate Dates — desktop only (md+) */}
                       <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
                         <button onClick={() => handleSort("date")} className="inline-flex items-center hover:text-brand transition">
                           Dates<SortIcon col="date" />
@@ -353,12 +361,18 @@ export function ProgramsResultsTable({
                             )}
                           </td>
 
-                          {/* Days */}
+                          {/* Combined Days + Dates — mobile only (below md) */}
+                          <td className="px-2 py-3 md:hidden">
+                            <span className="text-xs text-gray-600 leading-snug block">{formatDays(prog.days_of_week)}</span>
+                            <span className="text-xs text-gray-400 whitespace-nowrap">{formatDateRange(prog.start_date, prog.end_date)}</span>
+                          </td>
+
+                          {/* Days — desktop only (md+) */}
                           <td className="px-2 py-3 hidden md:table-cell w-[64px]">
                             <span className="text-xs text-gray-600 leading-snug">{formatDays(prog.days_of_week)}</span>
                           </td>
 
-                          {/* Date range */}
+                          {/* Date range — desktop only (md+) */}
                           <td className="px-2 py-3 hidden md:table-cell">
                             <span className="text-xs text-gray-600 whitespace-nowrap">
                               {formatDateRange(prog.start_date, prog.end_date)}
