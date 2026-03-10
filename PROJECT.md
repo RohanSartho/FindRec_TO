@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-09 (v2.2 — feedback widget, ScrollHint, activity blink, versioning system, Vercel live)
+> Last updated: 2026-03-10 (v2.2 — district backfill, programs table UX, testblue theme, data pipeline fixes)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -50,8 +50,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `rinks` | 135 | Indoor + outdoor ice rinks (63 indoor, 69 outdoor, 3 stubs) |
 | `rink_live_status` | rolling 48hr | Real-time open/closed/service_alert feed |
 | `facilities` | 7,212 | Amenities per location |
-| `programs` | 34,108 | Registered programs (weekly refresh) |
-| `dropins` | 29,034 | Drop-in sessions — one row per session occurrence |
+| `programs` | 28,812 | Registered programs (daily status refresh + weekly full ingest) |
+| `dropins` | 29,158 | Drop-in sessions — one row per session occurrence |
 | `seasons` | 1 | Auto-detected season windows (Fall 2025: Sep 2–Jun 19) |
 | `user_favourites` | — | Auth-gated saved locations |
 | `sync_log` | — | Ingest run history |
@@ -127,6 +127,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/auth/error` | Server | Auth error fallback |
 | `/internal-ops-findrecto/login` | Server | Admin login (posts to /api/admin/auth) |
 | `/internal-ops-findrecto` | Server | Admin dashboard — PostHog analytics (cookie-gated) |
+| `/testblue` | Client | Blue theme (#096294) test copy of homepage (admin-gated) |
+| `/testblue/activities` | Client | Blue theme test copy of /activities (admin-gated) |
 
 ---
 
@@ -188,6 +190,7 @@ src/
 | Function | Schedule | Purpose |
 |---|---|---|
 | `ingest-ckan` | Sunday 7am UTC | Fetch all CKAN datasets, normalize, upsert |
+| `refresh-program-status` | Daily 8am UTC | Lightweight daily refresh of programs.status only from CKAN |
 | `ingest-live-status` | Every 15 min | Fetch live rink status JSON, insert, prune 48hr |
 
 ### ingest-ckan processes (in order):
@@ -222,6 +225,8 @@ src/
 | Next.js 15 params are Promise | Fixed | Always `await params` in dynamic routes |
 | AbortError "lock broken" on all pages | Fixed | Next.js 15 Web Lock cookie race; `createClient()` in `server.ts` now catches AbortError at both `await cookies()` and `cookieStore.getAll()`, falling back to anonymous session; same guard in `auth/callback/route.ts`; handler-level catch in all `/api/favourites` handlers |
 | Admin dashboard dark theme mismatch | Fixed | Restyled `/internal-ops-findrecto` + login page to match site-wide palette: `#f5f2ec` bg, white cards, brand green Fraunces headings, gray-100 borders |
+| Location district always null | Fixed | `ingest-ckan` was reading `"Community Council Area"` (always None in CKAN); corrected to `"District"` field; re-ingested → 1,841 locations now have districts |
+| `refresh-program-status` never deployed | Fixed | Daily status refresh edge function deployed; was missing from Supabase, program statuses only refreshed weekly |
 
 ---
 
@@ -327,4 +332,5 @@ npx tsc --noEmit                               # Check for type errors
 | 22 | Bug fixes + UX: Ball Hockey reclassified from skating → sports (migration 0025 + ingest-ckan guard); "Ball Hockey" added to SHARED_SPORTS config; baseball/programs q-search fixed to OR both activity_title + course_title; ProgramsResultsTable sortable columns (Program/Location/Dates with ↑↓ arrows, default date desc); VenuesSection filter UX — district + venue-type dropdowns reduced width (~40%) + blinking brand border; All Activities dropdown blinking border; codebase refactor complete (REFACTOR_PLAN 100%). |
 | 23 | Analytics + admin dashboard: PostHog HogQL server queries (17 parallel, 5-min cache); admin dashboard 7 sections (KpiCard + AdminChart); admin restyle to site palette; AbortError definitive fix (double try/catch in server.ts + auth/callback); maple leaf logo; ScrollHint mobile pill; Vercel deploy. **App version: v2.1** |
 | 24 | Feedback widget: fixed bottom-right bubble with sonar ripple rings; two-path menu (Report a Bug / Suggest a Feature); forms with title, description, urgency (bug), screenshot upload, optional pre-filled email; /api/feedback creates Linear issues via GraphQL (team + label UUIDs resolved at cold-start); /api/feedback/upload handles Linear fileUpload → S3 PUT → assetUrl in issue markdown. **App version: v2.2** |
+| 25 | Data + UX fixes: district backfill (ingest-ckan wrong field → 1,841 locations now have districts); refresh-program-status deployed (daily status refresh); programs table UX (Days col 2/row, combined Schedule col on mobile, shorter status labels, tighter padding); /testblue + /testblue/activities theme test pages (admin-gated, CSS var override for #096294 blue); homepage copy "100+ → 500+ facilities". |
 | Next | Price/fee data investigation, mobile UX polish, notification system |
