@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FavouritesProvider } from "@/lib/context/FavouritesContext";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { FeedbackWidget } from "@/components/ui/FeedbackWidget";
 import { PostHogProvider } from "@/components/analytics/PostHogProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main>{children}</main>
           <Footer />
+          <FeedbackWidget />
         </FavouritesProvider>
         </PostHogProvider>
       </body>
