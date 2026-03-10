@@ -96,8 +96,8 @@ function formatDateRange(start: string | null, end: string | null): string {
 function formatDays(days: string[] | null): React.ReactNode {
   if (!days || days.length === 0) return "—";
   if (days.length >= 7) return "Daily";
-  const line1 = days.slice(0, 3).join(", ");
-  const line2 = days.slice(3).join(", ");
+  const line1 = days.slice(0, 2).join(", ");
+  const line2 = days.slice(2).join(", ");
   return (
     <span>
       {line1}
@@ -275,10 +275,10 @@ export function ProgramsResultsTable({
                           Location<SortIcon col="location" />
                         </button>
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell w-[90px]">
+                      <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell w-[64px]">
                         Days
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
+                      <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
                         <button onClick={() => handleSort("date")} className="inline-flex items-center hover:text-brand transition">
                           Dates<SortIcon col="date" />
                         </button>
@@ -354,12 +354,12 @@ export function ProgramsResultsTable({
                           </td>
 
                           {/* Days */}
-                          <td className="px-4 py-3 hidden md:table-cell w-[90px]">
+                          <td className="px-2 py-3 hidden md:table-cell w-[64px]">
                             <span className="text-xs text-gray-600 leading-snug">{formatDays(prog.days_of_week)}</span>
                           </td>
 
                           {/* Date range */}
-                          <td className="px-4 py-3 hidden md:table-cell">
+                          <td className="px-2 py-3 hidden md:table-cell">
                             <span className="text-xs text-gray-600 whitespace-nowrap">
                               {formatDateRange(prog.start_date, prog.end_date)}
                             </span>
