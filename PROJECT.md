@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-09 (v2.2 — feedback widget Report Bug / Suggest Feature → Linear)
+> Last updated: 2026-03-09 (v2.2 — feedback widget, ScrollHint, activity blink, versioning system, Vercel live)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -11,7 +11,7 @@
 
 **Repo:** https://github.com/RohanSartho/FindRec_TO
 **Local:** `toronto-parks/` directory
-**Live:** Not yet deployed (Vercel — pending)
+**Live:** https://findrectoronto.vercel.app
 
 ---
 
@@ -24,7 +24,7 @@
 | Backend | Supabase (Postgres + PostGIS + RLS + Auth + Edge Functions) |
 | Data | Toronto Open Data (CKAN API) — Open Government Licence |
 | Auth | Supabase Auth — Google OAuth + email/password |
-| Hosting | Vercel (not yet deployed) |
+| Hosting | Vercel — https://findrectoronto.vercel.app |
 | Analytics | PostHog (posthog-js + posthog-js/react) |
 | Repo | GitHub private — RohanSartho/FindRec_TO |
 | AI assist | Claude Code (you) |
@@ -109,6 +109,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/seasons` | GET | Season list |
 | `/api/favourites` | GET/POST/DELETE | Auth-gated user favourites |
 | `/api/admin/auth` | POST | Validate admin passphrase, set `admin_token` httpOnly cookie (8hr) |
+| `/api/feedback` | POST | Create Linear issue (Bug or Improvement label) via GraphQL; team + label UUIDs resolved at cold-start |
+| `/api/feedback/upload` | POST | Linear fileUpload mutation → signed S3 URL → PUT image → return assetUrl for issue markdown |
 
 ---
 
@@ -140,7 +142,7 @@ src/
 │   │   └── ProgramsResultsTable.tsx # Flat results table: Program | Location | Days | Dates | Time | Age | Status (Full/Open/Cancelled) | Price; venue links with returnTo
 │   ├── layout/
 │   │   ├── Navbar.tsx              # Sticky nav, auth state, user menu
-│   │   └── Footer.tsx              # Site footer — Open Data credit + version badge (v2.1) with hover changelog
+│   │   └── Footer.tsx              # Site footer — Open Data credit + version badge (v2.2) with hover changelog
 │   ├── map/
 │   │   ├── VenueMapView.tsx        # Mapbox map for Find Venues tab — markers + popup (name, address, chips, link)
 │   │   └── DropInMapView.tsx       # Mapbox map for Drop-ins tab — unique location markers with session time popups
@@ -158,6 +160,7 @@ src/
 │   │   └── AdminChart.tsx          # Recharts bar/line chart for admin sections
 │   └── ui/
 │       ├── AuthModal.tsx           # Google OAuth + email sign in/up
+│       ├── FeedbackWidget.tsx      # Fixed bottom-right bubble (sonar ripple); menu → Bug/Feature form → Linear issue
 │       ├── ScrollHint.tsx          # Mobile scroll-hint pill (triggerKey prop — re-shows on each Find click, 30s)
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
 ├── lib/
