@@ -62,11 +62,11 @@ const STATUS_PRIORITY: Record<ReturnType<typeof parseStatus>, number> = {
 };
 
 const STATUS_CONFIG: Partial<Record<ReturnType<typeof parseStatus>, { bg: string; text: string; dot: string; label: string }>> = {
-  open:      { bg: "bg-green-50",  text: "text-green-800",  dot: "bg-green-500",  label: "Enroll now · Open"     },
-  waitlist:  { bg: "bg-yellow-50", text: "text-yellow-800", dot: "bg-yellow-400", label: "Enroll now · Waitlist" },
-  full:      { bg: "bg-red-50",    text: "text-red-700",    dot: "bg-red-500",    label: "Full"                  },
-  started:   { bg: "bg-amber-50",  text: "text-amber-800",  dot: "bg-amber-400",  label: "Course started · Open" },
-  cancelled: { bg: "bg-gray-100",  text: "text-gray-500",   dot: "bg-gray-400",   label: "Cancelled"             },
+  open:      { bg: "bg-green-50",  text: "text-green-800",  dot: "bg-green-500",  label: "Enroll now"     },
+  waitlist:  { bg: "bg-yellow-50", text: "text-yellow-800", dot: "bg-yellow-400", label: "Waitlist"       },
+  full:      { bg: "bg-red-50",    text: "text-red-700",    dot: "bg-red-500",    label: "Full"           },
+  started:   { bg: "bg-amber-50",  text: "text-amber-800",  dot: "bg-amber-400",  label: "Course started" },
+  cancelled: { bg: "bg-gray-100",  text: "text-gray-500",   dot: "bg-gray-400",   label: "Cancelled"      },
 };
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -286,10 +286,10 @@ export function ProgramsResultsTable({
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Time
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
+                      <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden sm:table-cell">
                         Age
                       </th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                      <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Status
                       </th>
                     </tr>
@@ -373,14 +373,14 @@ export function ProgramsResultsTable({
                           </td>
 
                           {/* Age */}
-                          <td className="px-4 py-3 hidden sm:table-cell">
+                          <td className="px-2 py-3 hidden sm:table-cell">
                             <span className="text-xs text-gray-600">
                               {formatAgeRange(prog.min_age_months, prog.max_age_months)}
                             </span>
                           </td>
 
                           {/* Status */}
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-3">
                             <StatusBadge status={prog.status} />
                           </td>
                         </tr>
