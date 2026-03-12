@@ -52,6 +52,32 @@ function VenueTypeBadge({ session }: { session: Session }) {
   return <span className="text-gray-400 text-xs">—</span>;
 }
 
+type SortCol = "location" | "venue_type" | "time";
+type SortDir = "asc" | "desc";
+
+function getVenueTypeRank(session: Session): number {
+  const rinkType = session.locations?.rinks?.[0]?.rink_type;
+  if (rinkType === "indoor") return 0;
+  if (rinkType === "outdoor") return 1;
+  if (session.activity_type && session.activity_type !== "skating") return 0;
+  return 2;
+}
+
+function sortSessions(sessions: Session[], col: SortCol, dir: SortDir): Session[] {
+  const sorted = [...sessions].sort((a, b) => {
+    let cmp = 0;
+    if (col === "location") {
+      cmp = (a.locations?.name ?? "").localeCompare(b.locations?.name ?? "");
+    } else if (col === "venue_type") {
+      cmp = getVenueTypeRank(a) - getVenueTypeRank(b);
+    } else if (col === "time") {
+      cmp = (a.start_time ?? "").localeCompare(b.start_time ?? "");
+    }
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return sorted;
+}
+
 interface Group {
   program_type: string;
   session_count: number;
@@ -76,6 +102,22 @@ export function DropInResultsTable({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
+  const [sortCol, setSortCol] = useState<SortCol>("time");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortCol }) => {
+    if (sortCol !== col) return <span className="opacity-30">↕</span>;
+    return <span>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  };
 
   const toggleGroup = (type: string) => {
     setCollapsedGroups((prev) => {
@@ -179,7 +221,9 @@ export function DropInResultsTable({
                   <thead>
                     <tr className="border-t border-gray-100 bg-gray-50">
                       <th className="text-left px-5 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        Location
+                        <button onClick={() => handleSort("location")} className="flex items-center gap-1 hover:text-brand transition-colors">
+                          Location <SortIcon col="location" />
+                        </button>
                       </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Address
@@ -188,10 +232,14 @@ export function DropInResultsTable({
                         District
                       </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide hidden md:table-cell">
-                        Venue Type
+                        <button onClick={() => handleSort("venue_type")} className="flex items-center gap-1 hover:text-brand transition-colors">
+                          Venue Type <SortIcon col="venue_type" />
+                        </button>
                       </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        Time
+                        <button onClick={() => handleSort("time")} className="flex items-center gap-1 hover:text-brand transition-colors">
+                          Time <SortIcon col="time" />
+                        </button>
                       </th>
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Ages
@@ -199,7 +247,7 @@ export function DropInResultsTable({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {group.sessions.map((session, idx) => (
+                    {sortSessions(group.sessions, sortCol, sortDir).map((session, idx) => (
                       <tr
                         key={`${session.course_id}-${idx}`}
                         className="hover:bg-brand/5 transition"

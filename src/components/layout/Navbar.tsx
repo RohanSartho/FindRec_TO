@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { AuthModal } from "@/components/ui/AuthModal";
 import { User, LogOut, LayoutDashboard } from "lucide-react";
+import { APP_VERSION, VERSION_NOTES } from "@/lib/config/version";
 
 export function Navbar() {
   const { user, loading, signOut } = useAuth();
@@ -22,7 +23,34 @@ export function Navbar() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {/* Version badge */}
+            <div className="group relative">
+              <span className="inline-flex items-center px-2 py-1 rounded-full border border-gray-200 text-gray-400 font-mono text-[11px] cursor-default select-none hover:border-brand/40 hover:text-brand transition-colors">
+                v{APP_VERSION}
+              </span>
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 shadow-lg rounded-xl p-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50">
+                <p className="text-xs font-semibold mb-2" style={{ color: "#1a3a2a", fontFamily: "var(--font-fraunces), serif" }}>
+                  What&apos;s in each version
+                </p>
+                <ul className="space-y-1.5">
+                  {Object.entries(VERSION_NOTES)
+                    .sort(([a], [b]) => parseFloat(b) - parseFloat(a))
+                    .map(([ver, note]) => (
+                      <li key={ver} className="flex gap-2 items-start">
+                        <span
+                          className="shrink-0 font-mono text-[10px] px-1.5 py-0.5 rounded-md mt-0.5"
+                          style={ver === APP_VERSION ? { background: "#1a3a2a", color: "#c8f0d4" } : { background: "#f3f4f6", color: "#6b7280" }}
+                        >
+                          v{ver}
+                        </span>
+                        <span className="text-gray-600 text-[11px] leading-relaxed">{note}</span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+
             {!loading && (
               <>
                 {user ? (
