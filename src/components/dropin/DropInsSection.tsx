@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { CalendarDays, List, Map as MapIcon } from "lucide-react";
 import posthog from "posthog-js";
@@ -49,7 +49,26 @@ export function DropInsSection() {
   const [viewStyle, setViewStyle] = useState<"list" | "map">("list");
   const [searchTrigger, setSearchTrigger] = useState(0);
 
+  // ── Dynamic search state ─────────────────────────────────────────────────
+  // searchDone: becomes true after the user's first explicit "Find Drop-ins" click.
+  // All auto-search behaviour is gated on this — cold state is always explicit-click only.
+  const [searchDone, setSearchDone] = useState(false);
+
+  // filtersDirty: true when filters have changed since the last search completed.
+  // Drives the Find button pulse and "Update Results" label in warm state.
+  const [filtersDirty, setFiltersDirty] = useState(false);
+
+  // Refs so effects always call the latest version without stale closures
+  const searchDoneRef = useRef(false);
+  const searchRef = useRef<() => void>(() => {});
+
+  // Keep refs in sync with state/callback
+  useEffect(() => { searchDoneRef.current = searchDone; }, [searchDone]);
+
   const search = useCallback(async () => {
+    // Mark warm and clear dirty immediately so button enters "Searching..." state
+    setSearchDone(true);
+    setFiltersDirty(false);
     setLoading(true);
     try {
       const params = new URLSearchParams({ date: filters.date });
@@ -95,6 +114,43 @@ export function DropInsSection() {
     }
   }, [filters]);
 
+  // Keep searchRef current so the auto-search effect always calls the latest version
+  useEffect(() => { searchRef.current = search; }, [search]);
+
+  // ── Auto-search on filter changes (warm state only) ──────────────────────
+  // Fires when any discrete filter field changes AFTER the first explicit search.
+  // Text inputs (venueSearch, query) are intentionally excluded — they require Enter.
+  // Declared after searchRef update effect so searchRef is fresh when this fires.
+  useEffect(() => {
+    if (!searchDoneRef.current) return;
+    searchRef.current();
+    // Deps are all discrete filter fields that should auto-search.
+    // searchDone/searchDoneRef intentionally excluded — we read via ref to avoid stale closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.date,
+    filters.activityType,
+    filters.subActivity,
+    filters.selectedPrograms, // new array reference on every chip toggle
+    filters.ageCategory,
+    filters.timeFrom,
+    filters.timeTo,
+    filters.isNearMe,
+    filters.lat,
+    filters.lng,
+    filters.district,
+    filters.radiusKm,
+  ]);
+
+  // ── Filter change wrapper ────────────────────────────────────────────────
+  // Marks filtersDirty when the user changes any filter after the first search.
+  // Text inputs are included here (they dirty the button), but won't auto-search.
+  const handleFilterChange = useCallback((newFilters: DropInFilters) => {
+    setFilters(newFilters);
+    if (searchDoneRef.current) setFiltersDirty(true);
+  }, []); // stable — only reads ref, calls state setters
+
+  // ── Back-nav auto-search ─────────────────────────────────────────────────
   const autoSearchDone = useRef(false);
   React.useEffect(() => {
     if (!autoSearchDone.current && searchParams.get("tab") === "dropins") {
@@ -107,7 +163,14 @@ export function DropInsSection() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
       <div className="lg:sticky lg:top-20 lg:overflow-y-auto lg:max-h-[calc(100vh-9rem)]">
-        <DropInFilterPanel filters={filters} onChange={setFilters} onSearch={search} loading={loading} />
+        <DropInFilterPanel
+          filters={filters}
+          onChange={handleFilterChange}
+          onSearch={search}
+          loading={loading}
+          searchDone={searchDone}
+          filtersDirty={filtersDirty}
+        />
       </div>
 
       <div>
@@ -122,22 +185,25 @@ export function DropInsSection() {
             <div className="flex justify-end mb-3">
               <ViewToggle options={VIEW_OPTIONS} value={viewStyle} onChange={setViewStyle} />
             </div>
-            {viewStyle === "map" ? (
-              <DropInMapView
-                groups={results.groups}
-                userLat={filters.isNearMe ? filters.lat : null}
-                userLng={filters.isNearMe ? filters.lng : null}
-                returnTo={buildReturnTo(filters)}
-              />
-            ) : (
-              <DropInResultsTable
-                groups={results.groups}
-                total={results.total}
-                date={results.date}
-                returnTo={buildReturnTo(filters)}
-                searchTrigger={searchTrigger}
-              />
-            )}
+            {/* Dim results while an auto-search refresh is in progress */}
+            <div className={loading ? "opacity-60 pointer-events-none transition-opacity" : "transition-opacity"}>
+              {viewStyle === "map" ? (
+                <DropInMapView
+                  groups={results.groups}
+                  userLat={filters.isNearMe ? filters.lat : null}
+                  userLng={filters.isNearMe ? filters.lng : null}
+                  returnTo={buildReturnTo(filters)}
+                />
+              ) : (
+                <DropInResultsTable
+                  groups={results.groups}
+                  total={results.total}
+                  date={results.date}
+                  returnTo={buildReturnTo(filters)}
+                  searchTrigger={searchTrigger}
+                />
+              )}
+            </div>
           </>
         )}
       </div>

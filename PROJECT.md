@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-10 (v2.2 — district backfill, programs table UX, testblue theme, data pipeline fixes)
+> Last updated: 2026-03-12 (v2.3 — dynamic search: auto-refresh on filter change after first search)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -333,4 +333,5 @@ npx tsc --noEmit                               # Check for type errors
 | 23 | Analytics + admin dashboard: PostHog HogQL server queries (17 parallel, 5-min cache); admin dashboard 7 sections (KpiCard + AdminChart); admin restyle to site palette; AbortError definitive fix (double try/catch in server.ts + auth/callback); maple leaf logo; ScrollHint mobile pill; Vercel deploy. **App version: v2.1** |
 | 24 | Feedback widget: fixed bottom-right bubble with sonar ripple rings; two-path menu (Report a Bug / Suggest a Feature); forms with title, description, urgency (bug), screenshot upload, optional pre-filled email; /api/feedback creates Linear issues via GraphQL (team + label UUIDs resolved at cold-start); /api/feedback/upload handles Linear fileUpload → S3 PUT → assetUrl in issue markdown. **App version: v2.2** |
 | 25 | Data + UX fixes: district backfill (ingest-ckan wrong field → 1,841 locations now have districts); refresh-program-status deployed (daily status refresh); programs table UX (Days col 2/row, combined Schedule col on mobile, shorter status labels, tighter padding); /testblue + /testblue/activities theme test pages (admin-gated, CSS var override for #096294 blue); homepage copy "100+ → 500+ facilities". |
+| 26 | Dynamic search (Drop-ins + Programs): first search always requires explicit click; after that, discrete filter changes (date, activity, sub-activity, time, location, age) auto-refresh results; text inputs (venue name, program name) require Enter; Find button shows 3 states — cold pulse, "Update Results" pulse (dirty), calm (current); results dim during refresh. **App version: v2.3** |
 | Next | Price/fee data investigation, mobile UX polish, notification system |

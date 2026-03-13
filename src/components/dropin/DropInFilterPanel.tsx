@@ -35,6 +35,11 @@ interface DropInFilterPanelProps {
   onChange: (filters: DropInFilters) => void;
   onSearch: () => void;
   loading: boolean;
+  // Dynamic search props (from DropInsSection):
+  // searchDone — true after the user's first explicit search; gates auto-search behaviour
+  searchDone: boolean;
+  // filtersDirty — true when filters changed since last search; drives button pulse + label
+  filtersDirty: boolean;
 }
 
 // Preset quick-select options for the Time of Day dropdown
@@ -82,35 +87,44 @@ export function DropInFilterPanel({
   onChange,
   onSearch,
   loading,
+  searchDone,
+  filtersDirty,
 }: DropInFilterPanelProps) {
   const { loading: geoLoading, request: requestNearMe } = useNearMe();
   const [presetKey, setPresetKey] = useState<"" | "morning" | "afternoon" | "evening">("");
   const [timeMode, setTimeMode] = useState<"preset" | "range">("preset");
 
-  // Attention-indicator touched flags
+  // Attention-indicator touched flags (section-level border animation on first interaction)
   const [dateTouched, setDateTouched] = useState(false);
   const [timeTouched, setTimeTouched] = useState(false);
   const [locationTouched, setLocationTouched] = useState(false);
   const [activityTouched, setActivityTouched] = useState(false);
 
-  // Button pulse: blinks until search is run; re-blinks on filter change after search
-  const [filterChangedSinceSearch, setFilterChangedSinceSearch] = useState(true);
-
-  // Activity chosen: true once user has picked from dropdown; false when text search is active
+  // Activity chosen: true once user has picked from dropdown; false when text search is active.
+  // Gates the first search — user must choose an activity or enter a query before clicking.
   const [activityChosen, setActivityChosen] = useState(false);
 
   // Skating sub-type active group — default to Leisure when panel opens
   const [activeSkatingGroup, setActiveSkatingGroup] = useState<SkatingGroup | null>("leisure");
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Button state ──────────────────────────────────────────────────────────
+  // Three states:
+  //   cold  (!searchDone):              pulse, "Find Drop-ins"    — prompt first explicit click
+  //   dirty (searchDone && filtersDirty): pulse, "Update Results"  — filters changed since last search
+  //   clean (searchDone && !filtersDirty): no pulse, "Find Drop-ins" — results are current
+  const isPending = !searchDone || filtersDirty;
+  const buttonLabel = loading
+    ? "Searching…"
+    : searchDone && filtersDirty
+    ? "Update Results"
+    : "Find Drop-ins";
 
-  const markChanged = () => setFilterChangedSinceSearch(true);
+  // ── Search handler ────────────────────────────────────────────────────────
 
   const handleSearch = () => {
-    // Require either an activity selection or a text query before searching
-    if (!activityChosen && !filters.query) return;
-    setFilterChangedSinceSearch(false);
-    // Mark everything as touched on search
+    // In cold state, require an activity choice or text query before first search
+    if (!searchDone && !activityChosen && !filters.query) return;
+    // Mark all sections touched so attention borders all appear
     setDateTouched(true);
     setTimeTouched(true);
     setLocationTouched(true);
@@ -126,7 +140,6 @@ export function DropInFilterPanel({
     setTimeMode("preset");
     const range = PRESET_RANGES[k] ?? { from: "", to: "" };
     setTimeTouched(true);
-    markChanged();
     onChange({ ...filters, timeFrom: range.from, timeTo: range.to });
   };
 
@@ -135,7 +148,6 @@ export function DropInFilterPanel({
     setPresetKey("");
     const newTo = filters.timeTo && val && filters.timeTo <= val ? "" : filters.timeTo;
     setTimeTouched(true);
-    markChanged();
     onChange({ ...filters, timeFrom: val, timeTo: newTo });
   };
 
@@ -143,7 +155,6 @@ export function DropInFilterPanel({
     setTimeMode("range");
     setPresetKey("");
     setTimeTouched(true);
-    markChanged();
     onChange({ ...filters, timeTo: val });
   };
 
@@ -152,19 +163,16 @@ export function DropInFilterPanel({
   const handleNearMe = () => requestNearMe((lat, lng) => {
     onChange({ ...filters, lat, lng, district: "", venueSearch: "", isNearMe: true });
     setLocationTouched(true);
-    markChanged();
   });
 
   const clearNearMe = () => {
     onChange({ ...filters, lat: null, lng: null, isNearMe: false });
-    markChanged();
   };
 
   // ── Activity handler ──────────────────────────────────────────────────────
 
   const handleActivityChange = (val: string) => {
     setActivityTouched(true);
-    markChanged();
     if (val === "skating") {
       setActiveSkatingGroup("leisure");
       onChange({ ...filters, activityType: "", subActivity: "", selectedPrograms: LEISURE_DEFAULTS, ageCategory: "", query: "" });
@@ -176,7 +184,6 @@ export function DropInFilterPanel({
 
   const handleQueryChange = (val: string) => {
     setActivityTouched(true);
-    markChanged();
     setActivityChosen(false); // reset to "Choose activity" when text search is used
     onChange({ ...filters, query: val, activityType: "", subActivity: "", selectedPrograms: [], ageCategory: "" });
   };
@@ -201,17 +208,12 @@ export function DropInFilterPanel({
 
   const handleSkatingGroup = (group: SkatingGroup) => {
     if (activeSkatingGroup === group) {
-      // Deselect
       setActiveSkatingGroup(null);
       onChange({ ...filters, selectedPrograms: [] });
-      markChanged();
       return;
     }
     setActiveSkatingGroup(group);
-    markChanged();
-
     if (group === "leisure") {
-      // Always reset to defaults when Leisure is (re)selected
       onChange({ ...filters, selectedPrograms: LEISURE_DEFAULTS });
     } else {
       onChange({ ...filters, selectedPrograms: [] });
@@ -223,7 +225,6 @@ export function DropInFilterPanel({
     const next = selected.includes(value)
       ? selected.filter((v) => v !== value)
       : [...selected, value];
-    markChanged();
     onChange({ ...filters, selectedPrograms: next });
   };
 
@@ -255,7 +256,6 @@ export function DropInFilterPanel({
             value={filters.date}
             onChange={(e) => {
               setDateTouched(true);
-              markChanged();
               onChange({ ...filters, date: e.target.value });
             }}
             className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
@@ -280,7 +280,6 @@ export function DropInFilterPanel({
                   setTimeMode("preset");
                   setPresetKey("");
                   setTimeTouched(true);
-                  markChanged();
                   onChange({ ...filters, timeFrom: "", timeTo: "" });
                 }
               }}
@@ -373,7 +372,6 @@ export function DropInFilterPanel({
               value={filters.district}
               onChange={(e) => {
                 setLocationTouched(true);
-                markChanged();
                 onChange({ ...filters, district: e.target.value, venueSearch: "", isNearMe: false, lat: null, lng: null });
               }}
               className={clsx(
@@ -388,7 +386,7 @@ export function DropInFilterPanel({
             <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
 
-          {/* Venue name search */}
+          {/* Venue name search — text input; Enter key triggers search in warm state */}
           <div className={clsx("relative flex-1", locationInactive("venue"))}>
             <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -397,7 +395,6 @@ export function DropInFilterPanel({
               placeholder="Venue name"
               onChange={(e) => {
                 setLocationTouched(true);
-                markChanged();
                 onChange({ ...filters, venueSearch: e.target.value, district: "", isNearMe: false, lat: null, lng: null });
               }}
               onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -414,7 +411,7 @@ export function DropInFilterPanel({
           <div className="relative mt-1.5">
             <select
               value={filters.radiusKm}
-              onChange={(e) => { markChanged(); onChange({ ...filters, radiusKm: e.target.value }); }}
+              onChange={(e) => { onChange({ ...filters, radiusKm: e.target.value }); }}
               className="appearance-none w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
             >
               {RADIUS_OPTIONS.map((r) => (
@@ -463,6 +460,7 @@ export function DropInFilterPanel({
 
           <span className="text-xs text-gray-400 font-medium shrink-0">or</span>
 
+          {/* Program name text search — Enter key triggers search in warm state */}
           <div className={clsx("relative flex-1", queryInactive)}>
             <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -478,7 +476,7 @@ export function DropInFilterPanel({
             />
             {filters.query && (
               <button
-                onClick={() => { markChanged(); onChange({ ...filters, query: "" }); }}
+                onClick={() => { onChange({ ...filters, query: "" }); }}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X size={11} />
@@ -537,7 +535,7 @@ export function DropInFilterPanel({
         {activityChosen && !isSkating && SUB_ACTIVITY_MAP[filters.activityType] && (
           <div className="flex flex-wrap gap-1 mt-2">
             <button
-              onClick={() => { markChanged(); onChange({ ...filters, subActivity: "" }); }}
+              onClick={() => { onChange({ ...filters, subActivity: "" }); }}
               className={clsx(
                 "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
                 !filters.subActivity ? "bg-brand text-white border-brand" : "bg-white text-gray-500 border-gray-200 hover:border-brand/60"
@@ -548,7 +546,7 @@ export function DropInFilterPanel({
             {SUB_ACTIVITY_MAP[filters.activityType].map((s) => (
               <button
                 key={s.value}
-                onClick={() => { markChanged(); onChange({ ...filters, subActivity: s.value }); }}
+                onClick={() => { onChange({ ...filters, subActivity: s.value }); }}
                 className={clsx(
                   "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
                   filters.subActivity === s.value ? "bg-brand text-white border-brand" : "bg-white text-gray-500 border-gray-200 hover:border-brand/60"
@@ -568,7 +566,7 @@ export function DropInFilterPanel({
             </label>
             <select
               value={filters.ageCategory}
-              onChange={(e) => { markChanged(); onChange({ ...filters, ageCategory: e.target.value }); }}
+              onChange={(e) => { onChange({ ...filters, ageCategory: e.target.value }); }}
               className={clsx(
                 "appearance-none w-full bg-white border rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand",
                 filters.ageCategory ? "border-[#1a3a2a] border-2" : "border-gray-200"
@@ -584,17 +582,19 @@ export function DropInFilterPanel({
       </div>
 
       {/* ── Find Drop-ins button ──────────────────────────────────────────── */}
+      {/* isPending: true in cold state (!searchDone) OR when filters changed since last search.
+          Shows pulse animation to prompt action. Label changes to "Update Results" in dirty warm state. */}
       <button
         onClick={handleSearch}
         disabled={loading}
-        style={filterChangedSinceSearch ? { borderColor: "#1a3a2a" } : undefined}
+        style={isPending ? { borderColor: "#1a3a2a" } : undefined}
         className={clsx(
           "w-full bg-brand text-white rounded-xl py-2.5 text-sm font-medium hover:bg-brand-dark transition disabled:opacity-50 flex items-center justify-center gap-2 border-2 border-transparent",
-          filterChangedSinceSearch && "animate-filter-pulse"
+          isPending && "animate-filter-pulse"
         )}
       >
         {loading && <Loader2 size={14} className="animate-spin" />}
-        {loading ? "Searching..." : "Find Drop-ins"}
+        {buttonLabel}
       </button>
     </div>
   );

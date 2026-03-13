@@ -33,6 +33,11 @@ interface ProgramsFilterPanelProps {
   onChange: (filters: ProgramFilters) => void;
   onSearch: () => void;
   loading: boolean;
+  // Dynamic search props (from ProgramsSection):
+  // searchDone — true after the user's first explicit search; gates auto-search behaviour
+  searchDone: boolean;
+  // filtersDirty — true when filters changed since last search; drives button pulse + label
+  filtersDirty: boolean;
 }
 
 const AGE_OPTIONS = [
@@ -59,6 +64,8 @@ export function ProgramsFilterPanel({
   onChange,
   onSearch,
   loading,
+  searchDone,
+  filtersDirty,
 }: ProgramsFilterPanelProps) {
   const { loading: geoLoading, request: requestNearMe } = useNearMe();
   const [dateOpen, setDateOpen] = useState(false);
@@ -68,11 +75,22 @@ export function ProgramsFilterPanel({
   const [locationTouched, setLocationTouched] = useState(false);
   const [activityTouched, setActivityTouched] = useState(false);
 
-  const [filterChangedSinceSearch, setFilterChangedSinceSearch] = useState(true);
-  const markChanged = () => setFilterChangedSinceSearch(true);
+  // ── Button state ──────────────────────────────────────────────────────────
+  // Three states:
+  //   cold  (!searchDone):               pulse, "Find Programs"   — prompt first explicit click
+  //   dirty (searchDone && filtersDirty): pulse, "Update Results"  — filters changed since last search
+  //   clean (searchDone && !filtersDirty): no pulse, "Find Programs" — results are current
+  const isPending = !searchDone || filtersDirty;
+  const buttonLabel = loading
+    ? "Searching…"
+    : searchDone && filtersDirty
+    ? "Update Results"
+    : "Find Programs";
+
+  // ── Search handler ────────────────────────────────────────────────────────
 
   const handleSearch = () => {
-    setFilterChangedSinceSearch(false);
+    // Mark all sections touched so attention borders appear
     setDateTouched(true);
     setTimeTouched(true);
     setLocationTouched(true);
@@ -92,25 +110,21 @@ export function ProgramsFilterPanel({
   const handleNearMe = () => requestNearMe((lat, lng) => {
     onChange({ ...filters, lat, lng, district: "", venueSearch: "", isNearMe: true });
     setLocationTouched(true);
-    markChanged();
   });
 
   const clearNearMe = () => {
     onChange({ ...filters, lat: null, lng: null, isNearMe: false });
-    markChanged();
   };
 
   // ── Activity / Program name — selecting one clears the other ────────────
   const handleActivityChange = (val: string) => {
     setActivityTouched(true);
-    markChanged();
     // Clear program-name query when switching to activity filter
     onChange({ ...filters, activityType: val, subActivity: "", query: "" });
   };
 
   const handleQueryChange = (val: string) => {
     setActivityTouched(true);
-    markChanged();
     // Clear activity type when switching to text search
     onChange({ ...filters, query: val, activityType: "", subActivity: "" });
   };
@@ -155,12 +169,12 @@ export function ProgramsFilterPanel({
           </button>
           {dateOpen && (
             <div className="mt-1 space-y-1">
+              {/* Date inputs auto-search on change (dateFrom/dateTo are in the Section's auto-search effect deps) */}
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => {
                   setDateTouched(true);
-                  markChanged();
                   onChange({ ...filters, dateFrom: e.target.value });
                 }}
                 className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
@@ -171,7 +185,6 @@ export function ProgramsFilterPanel({
                 min={filters.dateFrom}
                 onChange={(e) => {
                   setDateTouched(true);
-                  markChanged();
                   onChange({ ...filters, dateTo: e.target.value });
                   if (e.target.value) setDateOpen(false);
                 }}
@@ -191,7 +204,6 @@ export function ProgramsFilterPanel({
               value={filters.timeOfDay}
               onChange={(e) => {
                 setTimeTouched(true);
-                markChanged();
                 onChange({ ...filters, timeOfDay: e.target.value });
               }}
               className="appearance-none w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
@@ -243,7 +255,6 @@ export function ProgramsFilterPanel({
               value={filters.district}
               onChange={(e) => {
                 setLocationTouched(true);
-                markChanged();
                 onChange({
                   ...filters,
                   district: e.target.value,
@@ -265,7 +276,7 @@ export function ProgramsFilterPanel({
             <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
 
-          {/* Venue search — always interactive; clears district + nearMe when typed */}
+          {/* Venue search — text input; Enter key triggers search in warm state */}
           <div className={clsx("relative flex-1", locationInactive("venue"))}>
             <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -274,7 +285,6 @@ export function ProgramsFilterPanel({
               placeholder="Venue name"
               onChange={(e) => {
                 setLocationTouched(true);
-                markChanged();
                 onChange({
                   ...filters,
                   venueSearch: e.target.value,
@@ -299,7 +309,6 @@ export function ProgramsFilterPanel({
             <select
               value={filters.radiusKm}
               onChange={(e) => {
-                markChanged();
                 onChange({ ...filters, radiusKm: e.target.value });
               }}
               className="appearance-none w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
@@ -338,7 +347,7 @@ export function ProgramsFilterPanel({
 
           <span className="text-xs text-gray-400 font-medium shrink-0">or</span>
 
-          {/* Program name text search — always interactive; clears activityType on type */}
+          {/* Program name text search — Enter key triggers search in warm state */}
           <div className={clsx("relative flex-1", queryInactive)}>
             <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
@@ -354,7 +363,7 @@ export function ProgramsFilterPanel({
             />
             {filters.query && (
               <button
-                onClick={() => { markChanged(); onChange({ ...filters, query: "" }); }}
+                onClick={() => { onChange({ ...filters, query: "" }); }}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X size={11} />
@@ -367,7 +376,7 @@ export function ProgramsFilterPanel({
         {filters.activityType && PROGRAMS_SUB_ACTIVITY_MAP[filters.activityType] && (
           <div className="flex flex-wrap gap-1 mt-2">
             <button
-              onClick={() => { markChanged(); onChange({ ...filters, subActivity: "" }); }}
+              onClick={() => { onChange({ ...filters, subActivity: "" }); }}
               className={clsx(
                 "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
                 !filters.subActivity
@@ -380,7 +389,7 @@ export function ProgramsFilterPanel({
             {PROGRAMS_SUB_ACTIVITY_MAP[filters.activityType].map((s) => (
               <button
                 key={s.value}
-                onClick={() => { markChanged(); onChange({ ...filters, subActivity: s.value }); }}
+                onClick={() => { onChange({ ...filters, subActivity: s.value }); }}
                 className={clsx(
                   "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
                   filters.subActivity === s.value
@@ -403,7 +412,7 @@ export function ProgramsFilterPanel({
         <div className="relative">
           <select
             value={filters.ageCategory}
-            onChange={(e) => { markChanged(); onChange({ ...filters, ageCategory: e.target.value }); }}
+            onChange={(e) => { onChange({ ...filters, ageCategory: e.target.value }); }}
             className="appearance-none w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 pr-6 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             {AGE_OPTIONS.map((a) => (
@@ -415,17 +424,19 @@ export function ProgramsFilterPanel({
       </div>
 
       {/* ── Find Programs button ───────────────────────────────────────────── */}
+      {/* isPending: true in cold state (!searchDone) OR when filters changed since last search.
+          Shows pulse animation to prompt action. Label changes to "Update Results" in dirty warm state. */}
       <button
         onClick={handleSearch}
         disabled={loading}
-        style={filterChangedSinceSearch ? { borderColor: "#1a3a2a" } : undefined}
+        style={isPending ? { borderColor: "#1a3a2a" } : undefined}
         className={clsx(
           "w-full bg-brand text-white rounded-xl py-2 text-sm font-medium hover:bg-brand-dark transition disabled:opacity-50 flex items-center justify-center gap-2 border-2 border-transparent",
-          filterChangedSinceSearch && "animate-filter-pulse"
+          isPending && "animate-filter-pulse"
         )}
       >
         {loading && <Loader2 size={14} className="animate-spin" />}
-        {loading ? "Searching..." : "Find Programs"}
+        {buttonLabel}
       </button>
     </div>
   );
