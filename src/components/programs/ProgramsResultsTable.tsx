@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatTimeRange, formatAgeRange } from "@/lib/utils/timetable";
-import { MapPin, ExternalLink, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { MapPin, ExternalLink, ChevronDown, ChevronUp, ChevronsUpDown, Bookmark } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import clsx from "clsx";
 import posthog from "posthog-js";
 import { ScrollHint } from "@/components/ui/ScrollHint";
+import { AuthModal } from "@/components/ui/AuthModal";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface Program {
   course_id: number | null;
@@ -140,6 +142,55 @@ function sortPrograms(progs: Program[], col: SortCol, dir: SortDir): Program[] {
   });
 }
 
+// ── Program watchlist button ──────────────────────────────────────────────────
+// Renders a bookmark icon per row. Tracks optimistic state locally; syncs
+// with /api/program-watchlist on mount.
+
+interface ProgramWatchlistButtonProps {
+  courseId: number | null;
+  locationId: number | null;
+  /** Set of "courseId:locationId" keys already on this user's watchlist */
+  watchedKeys: Set<string>;
+  onToggle: (courseId: number, locationId: number, isAdding: boolean) => void;
+  onRequireAuth: () => void;
+}
+
+function ProgramWatchlistButton({
+  courseId,
+  locationId,
+  watchedKeys,
+  onToggle,
+  onRequireAuth,
+}: ProgramWatchlistButtonProps) {
+  const { user } = useAuth();
+  if (!courseId || !locationId) return null;
+
+  const key = `${courseId}:${locationId}`;
+  const isWatched = watchedKeys.has(key);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { onRequireAuth(); return; }
+    onToggle(courseId, locationId, !isWatched);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      title={isWatched ? "Remove from watchlist" : "Add to program watchlist"}
+      className={clsx(
+        "p-1 rounded-full transition",
+        isWatched
+          ? "text-brand hover:text-brand/70"
+          : "text-gray-300 hover:text-brand"
+      )}
+    >
+      <Bookmark size={13} className={isWatched ? "fill-brand" : ""} />
+    </button>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ProgramsResultsTable({
@@ -151,6 +202,59 @@ export function ProgramsResultsTable({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Watched keys: "courseId:locationId" — synced from API on mount
+  const [watchedKeys, setWatchedKeys] = useState<Set<string>>(new Set());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/program-watchlist")
+      .then((r) => r.ok ? r.json() : { data: [] })
+      .then(({ data }) => {
+        if (!Array.isArray(data)) return;
+        setWatchedKeys(new Set(data.map((w: { course_id: number; location_id: number }) =>
+          `${w.course_id}:${w.location_id}`
+        )));
+      })
+      .catch(() => {/* unauthenticated — no watchlist to show */});
+  }, []);
+
+  const handleWatchlistToggle = async (courseId: number, locationId: number, isAdding: boolean) => {
+    const key = `${courseId}:${locationId}`;
+    // Optimistic update
+    setWatchedKeys((prev) => {
+      const next = new Set(prev);
+      if (isAdding) next.add(key); else next.delete(key);
+      return next;
+    });
+
+    if (isAdding) {
+      const res = await fetch("/api/program-watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_id: courseId, location_id: locationId }),
+      });
+      if (!res.ok && res.status !== 409) {
+        setWatchedKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
+      }
+    } else {
+      // Find the watchlist entry id, then delete
+      const listRes = await fetch("/api/program-watchlist");
+      if (listRes.ok) {
+        const { data } = await listRes.json();
+        const match = data?.find((w: { id: number; course_id: number; location_id: number }) =>
+          w.course_id === courseId && w.location_id === locationId
+        );
+        if (match) {
+          await fetch("/api/program-watchlist", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: match.id }),
+          });
+        }
+      }
+    }
+  };
 
   const handleSort = (col: SortCol) => {
     if (col === sortCol) {
@@ -211,6 +315,11 @@ export function ProgramsResultsTable({
 
   return (
     <div className="space-y-4">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        message="Sign in to add programs to your watchlist."
+      />
       <ScrollHint triggerKey={searchTrigger} />
       {/* Summary */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -300,6 +409,8 @@ export function ProgramsResultsTable({
                       <th className="text-left px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Status
                       </th>
+                      {/* Watchlist column — icon only, no label */}
+                      <th className="px-3 py-2.5 w-8" aria-label="Watchlist" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -396,6 +507,16 @@ export function ProgramsResultsTable({
                           {/* Status */}
                           <td className="px-2 py-3">
                             <StatusBadge status={prog.status} />
+                          </td>
+                          {/* Watchlist button */}
+                          <td className="px-3 py-3">
+                            <ProgramWatchlistButton
+                              courseId={prog.course_id}
+                              locationId={prog.location_id}
+                              watchedKeys={watchedKeys}
+                              onToggle={handleWatchlistToggle}
+                              onRequireAuth={() => setShowAuthModal(true)}
+                            />
                           </td>
                         </tr>
                       );

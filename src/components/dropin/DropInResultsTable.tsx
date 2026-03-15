@@ -1,12 +1,14 @@
 "use client";
 
 import { formatTimeRange, formatAgeRange } from "@/lib/utils/timetable";
-import { MapPin, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { MapPin, ChevronDown, ChevronUp, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import posthog from "posthog-js";
 import { ScrollHint } from "@/components/ui/ScrollHint";
+import { AuthModal } from "@/components/ui/AuthModal";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface Session {
   course_id: number;
@@ -84,6 +86,53 @@ interface Group {
   sessions: Session[];
 }
 
+// ── Drop-in alert button ──────────────────────────────────────────────────────
+// Renders a bell icon per row. Tracks optimistic state locally; syncs with
+// /api/dropin-alerts on mount to reflect any alerts the user already set.
+
+interface DropInAlertButtonProps {
+  locationId: number;
+  courseTitle: string;
+  /** Set of "locationId:courseTitle" keys already tracked by this user */
+  trackedKeys: Set<string>;
+  onToggle: (locationId: number, courseTitle: string, isAdding: boolean) => void;
+  onRequireAuth: () => void;
+}
+
+function DropInAlertButton({
+  locationId,
+  courseTitle,
+  trackedKeys,
+  onToggle,
+  onRequireAuth,
+}: DropInAlertButtonProps) {
+  const { user } = useAuth();
+  const key = `${locationId}:${courseTitle}`;
+  const isTracked = trackedKeys.has(key);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { onRequireAuth(); return; }
+    onToggle(locationId, courseTitle, !isTracked);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      title={isTracked ? "Remove drop-in alert" : "Get alerted when this drop-in runs"}
+      className={clsx(
+        "p-1 rounded-full transition",
+        isTracked
+          ? "text-brand hover:text-brand/70"
+          : "text-gray-300 hover:text-brand"
+      )}
+    >
+      <Bell size={13} className={isTracked ? "fill-brand" : ""} />
+    </button>
+  );
+}
+
 interface DropInResultsTableProps {
   groups: Group[];
   total: number;
@@ -99,11 +148,63 @@ export function DropInResultsTable({
   returnTo,
   searchTrigger,
 }: DropInResultsTableProps) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    new Set()
-  );
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<SortCol>("time");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Tracked alert keys: "locationId:courseTitle" — synced from API on mount
+  const [trackedKeys, setTrackedKeys] = useState<Set<string>>(new Set());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/dropin-alerts")
+      .then((r) => r.ok ? r.json() : { data: [] })
+      .then(({ data }) => {
+        if (!Array.isArray(data)) return;
+        setTrackedKeys(new Set(data.map((a: { location_id: number; course_title: string }) =>
+          `${a.location_id}:${a.course_title}`
+        )));
+      })
+      .catch(() => {/* unauthenticated — no alerts to show */});
+  }, []);
+
+  const handleAlertToggle = async (locationId: number, courseTitle: string, isAdding: boolean) => {
+    const key = `${locationId}:${courseTitle}`;
+    // Optimistic update
+    setTrackedKeys((prev) => {
+      const next = new Set(prev);
+      if (isAdding) next.add(key); else next.delete(key);
+      return next;
+    });
+
+    if (isAdding) {
+      const res = await fetch("/api/dropin-alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location_id: locationId, course_title: courseTitle }),
+      });
+      // Roll back on failure (excluding 409 duplicate — keep as tracked)
+      if (!res.ok && res.status !== 409) {
+        setTrackedKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
+      }
+    } else {
+      // Find the alert id to delete: re-fetch to get the id
+      const listRes = await fetch("/api/dropin-alerts");
+      if (listRes.ok) {
+        const { data } = await listRes.json();
+        const match = data?.find((a: { id: number; location_id: number; course_title: string }) =>
+          a.location_id === locationId && a.course_title === courseTitle
+        );
+        if (match) {
+          await fetch("/api/dropin-alerts", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: match.id }),
+          });
+        }
+      }
+    }
+  };
 
   const handleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -152,6 +253,11 @@ export function DropInResultsTable({
 
   return (
     <div className="space-y-4">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        message="Sign in to set drop-in alerts."
+      />
       <ScrollHint triggerKey={searchTrigger} />
       {/* Summary header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -244,6 +350,8 @@ export function DropInResultsTable({
                       <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Ages
                       </th>
+                      {/* Alert column — no label, icon-only */}
+                      <th className="px-3 py-2.5 w-8" aria-label="Alert" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -304,6 +412,16 @@ export function DropInResultsTable({
                               session.max_age_months
                             )}
                           </span>
+                        </td>
+                        {/* Alert button */}
+                        <td className="px-3 py-3">
+                          <DropInAlertButton
+                            locationId={session.location_id}
+                            courseTitle={session.course_title}
+                            trackedKeys={trackedKeys}
+                            onToggle={handleAlertToggle}
+                            onRequireAuth={() => setShowAuthModal(true)}
+                          />
                         </td>
                       </tr>
                     ))}
