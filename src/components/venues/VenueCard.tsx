@@ -67,7 +67,7 @@ export function VenueCard({
     const venueType = venue.rink ? venue.rink.rink_type : venue.venue_type;
     return (
       <>
-        <div className="relative bg-white rounded-xl border border-gray-200 hover:border-brand hover:shadow-sm transition px-3 py-2 flex items-center gap-2.5">
+        <div className="relative bg-white rounded-xl border border-gray-200 hover:border-brand hover:shadow-sm transition px-3 py-1.5 flex items-center gap-2.5">
           <Link href={href} className="absolute inset-0 rounded-xl z-10" aria-label={venue.name} />
 
           {/* Indoor/Outdoor dot */}
@@ -115,7 +115,7 @@ export function VenueCard({
 
   return (
     <>
-      <div className="relative bg-white rounded-2xl border-2 border-brand hover:shadow-md transition p-4 flex flex-col gap-3">
+      <div className="relative bg-white rounded-2xl border-2 border-brand hover:shadow-md transition p-3 flex flex-col gap-2">
         {/* Full-card link overlay */}
         <Link
           href={href}

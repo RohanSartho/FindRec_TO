@@ -237,10 +237,10 @@ export function VenuesSection() {
         />
       ) : (
         <div className={clsx(
-          "grid gap-4",
+          "grid",
           viewStyle === "grid"
-            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            : "grid-cols-1 sm:grid-cols-2 gap-1.5"
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+            : "grid-cols-1 sm:grid-cols-2 gap-1"
         )}>
           {filteredVenues.map((venue) => (
             <VenueCard
