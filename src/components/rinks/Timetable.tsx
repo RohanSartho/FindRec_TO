@@ -359,14 +359,14 @@ export function Timetable({
                       </p>
                       <div
                         ref={calScrollRef}
-                        className="overflow-x-auto rounded-xl border border-gray-200 cursor-grab active:cursor-grabbing select-none"
+                        className="overflow-x-auto overflow-y-auto max-h-[65vh] rounded-xl border border-gray-200 cursor-grab active:cursor-grabbing select-none"
                         onMouseDown={onCalMouseDown}
                         onMouseMove={onCalMouseMove}
                         onMouseUp={onCalMouseUp}
                         onMouseLeave={onCalMouseUp}
                       >
                         <table className="w-full border-collapse text-sm min-w-[600px]">
-                          <thead>
+                          <thead className="sticky top-0 z-10">
                             <tr className="bg-gray-50">
                               <th className="text-left py-2.5 px-3 font-semibold text-gray-700 w-36 border-b border-r border-gray-200">
                                 Program
