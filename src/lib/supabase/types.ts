@@ -496,6 +496,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_dropin_alerts: {
+        Row: {
+          id: number
+          user_id: string
+          location_id: number
+          course_title: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          location_id: number
+          course_title: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          location_id?: number
+          course_title?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dropin_alerts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_favourites: {
         Row: {
           created_at: string | null
@@ -518,6 +550,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_favourites_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_program_watchlist: {
+        Row: {
+          id: number
+          user_id: string
+          course_id: number
+          location_id: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          course_id: number
+          location_id: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          course_id?: number
+          location_id?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_program_watchlist_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"

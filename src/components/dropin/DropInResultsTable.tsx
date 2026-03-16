@@ -2,7 +2,7 @@
 
 import { formatTimeRange, formatAgeRange } from "@/lib/utils/timetable";
 import { MapPin, ChevronDown, ChevronUp, Bell } from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import posthog from "posthog-js";
