@@ -6,7 +6,7 @@ import { AuthModal } from "@/components/ui/AuthModal";
 import { VenueCard, Venue } from "@/components/venues/VenueCard";
 import {
   Loader2, LayoutDashboard, Heart, LogOut,
-  Bell, Bookmark, X, ExternalLink, CalendarDays,
+  Bell, Bookmark, X, ExternalLink, CalendarDays, BellRing,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -154,6 +154,140 @@ function EmptyState({ icon: Icon, message, cta }: {
   );
 }
 
+// ── Helper: convert VAPID public key (base64url) to Uint8Array ───────────────
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64  = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const out = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) out[i] = rawData.charCodeAt(i);
+  return out;
+}
+
+// ── Push Notification opt-in banner ──────────────────────────────────────────
+// Shown on the dashboard when the user has at least one drop-in alert.
+// Manages service-worker registration + PushManager subscription lifecycle.
+
+function PushNotificationBanner() {
+  const [state, setState] = useState<"loading" | "unsupported" | "denied" | "subscribed" | "idle">("loading");
+  const [busy, setBusy]   = useState(false);
+
+  // Determine current subscription state on mount
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setState("unsupported");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setState("denied");
+      return;
+    }
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.pushManager.getSubscription().then((sub) => {
+        setState(sub ? "subscribed" : "idle");
+      });
+    }).catch(() => setState("idle"));
+  }, []);
+
+  async function subscribe() {
+    setBusy(true);
+    try {
+      const reg  = await navigator.serviceWorker.register("/sw.js");
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setState("denied"); return; }
+
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      const json = sub.toJSON();
+      await fetch("/api/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: sub.endpoint,
+          p256dh:   json.keys?.p256dh   ?? "",
+          auth:     json.keys?.auth     ?? "",
+        }),
+      });
+      setState("subscribed");
+    } catch {
+      // User closed the prompt or an error occurred — stay in idle
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unsubscribe() {
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await fetch("/api/push-subscribe", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        await sub.unsubscribe();
+      }
+      setState("idle");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Don't render anything while detecting or if push is unsupported
+  if (state === "loading" || state === "unsupported") return null;
+
+  if (state === "denied") {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+        <BellRing size={16} className="shrink-0 text-yellow-500" />
+        <p>Browser notifications are blocked. Enable them in your browser settings to get drop-in reminders.</p>
+      </div>
+    );
+  }
+
+  if (state === "subscribed") {
+    return (
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
+        <div className="flex items-center gap-2.5">
+          <BellRing size={16} className="shrink-0 text-green-600" />
+          <span>Browser notifications are <strong>on</strong> — you&apos;ll be reminded on days you have drop-in sessions.</span>
+        </div>
+        <button
+          onClick={unsubscribe}
+          disabled={busy}
+          className="shrink-0 text-xs text-green-700 underline hover:text-green-900 transition"
+        >
+          Turn off
+        </button>
+      </div>
+    );
+  }
+
+  // state === "idle"
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-700">
+      <div className="flex items-center gap-2.5">
+        <BellRing size={16} className="shrink-0 text-brand" />
+        <span>Get browser notifications on days you have drop-in sessions.</span>
+      </div>
+      <button
+        onClick={subscribe}
+        disabled={busy}
+        className="shrink-0 px-3 py-1 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand-dark transition disabled:opacity-50"
+      >
+        {busy ? "…" : "Turn on"}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -260,6 +394,9 @@ export default function DashboardPage() {
           Sign out
         </button>
       </div>
+
+      {/* ── Push notification opt-in ──────────────────────────────────────── */}
+      <PushNotificationBanner />
 
       {/* ── Saved Venues ──────────────────────────────────────────────────── */}
       <section>
