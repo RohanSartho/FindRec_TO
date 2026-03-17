@@ -45,6 +45,16 @@ export function useAuth() {
     });
   };
 
+  const signInWithFacebook = async () => {
+    posthog.capture("auth_login", { method: "facebook" });
+    await supabase.auth.signInWithOAuth({
+      provider: "facebook",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/`,
+      },
+    });
+  };
+
   const signInWithEmail = async (email: string, password: string) => {
     return supabase.auth.signInWithPassword({ email, password });
   };
@@ -61,5 +71,5 @@ export function useAuth() {
     await supabase.auth.signOut();
   };
 
-  return { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut };
+  return { user, loading, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut };
 }
