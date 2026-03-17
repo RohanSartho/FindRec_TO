@@ -41,6 +41,18 @@ async function runNotifications() {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  // ── 0. Feature flag check — bail out if push_notifications is disabled ───────
+  const { data: flagRow } = await supabase
+    .from("feature_flags")
+    .select("enabled")
+    .eq("key", "push_notifications")
+    .single();
+
+  if (flagRow && !flagRow.enabled) {
+    console.log("push_notifications feature flag is OFF — skipping.");
+    return;
+  }
+
   // Today's date in YYYY-MM-DD (UTC — matches stored first_date values)
   const todayStr = new Date().toISOString().slice(0, 10);
 

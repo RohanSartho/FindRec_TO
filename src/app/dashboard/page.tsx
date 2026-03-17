@@ -170,11 +170,21 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 // Manages service-worker registration + PushManager subscription lifecycle.
 
 function PushNotificationBanner() {
-  const [state, setState] = useState<"loading" | "unsupported" | "denied" | "subscribed" | "idle">("loading");
-  const [busy, setBusy]   = useState(false);
+  const [state, setState]       = useState<"loading" | "unsupported" | "denied" | "subscribed" | "idle">("loading");
+  const [busy, setBusy]         = useState(false);
+  const [flagEnabled, setFlagEnabled] = useState<boolean | null>(null);
 
-  // Determine current subscription state on mount
+  // Check feature flag + subscription state in parallel on mount
   useEffect(() => {
+    // Fetch the feature flag first — if disabled, stay in "loading" until
+    // flagEnabled resolves to false, then the component returns null.
+    fetch("/api/feature-flags")
+      .then((r) => r.json())
+      .then(({ flags }: { flags: Record<string, boolean> }) => {
+        setFlagEnabled(flags.push_notifications ?? true);
+      })
+      .catch(() => setFlagEnabled(true)); // default to enabled on fetch error
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       setState("unsupported");
       return;
@@ -240,7 +250,8 @@ function PushNotificationBanner() {
     }
   }
 
-  // Don't render anything while detecting or if push is unsupported
+  // Don't render if: still loading, push unsupported, or feature flag is off
+  if (flagEnabled === null || flagEnabled === false) return null;
   if (state === "loading" || state === "unsupported") return null;
 
   if (state === "denied") {

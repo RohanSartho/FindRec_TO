@@ -622,6 +622,27 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          key: string
+          enabled: boolean
+          label: string
+          description: string
+        }
+        Insert: {
+          key: string
+          enabled?: boolean
+          label: string
+          description?: string
+        }
+        Update: {
+          key?: string
+          enabled?: boolean
+          label?: string
+          description?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

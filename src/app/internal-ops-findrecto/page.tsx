@@ -1,6 +1,7 @@
 import { KpiCard } from "@/components/admin/KpiCard";
 import { AdminChart } from "@/components/admin/AdminChart";
 import type { ChartRow } from "@/components/admin/AdminChart";
+import { FeatureTogglesPanel } from "@/components/admin/FeatureTogglesPanel";
 
 /* ── PostHog HogQL helpers ──────────────────────────────────────────────── */
 
@@ -176,6 +177,15 @@ export default async function AdminDashboardPage() {
       </header>
 
       <main className="px-6 py-8 max-w-7xl mx-auto space-y-10">
+
+        {/* ── 0. Feature Toggles ─────────────────────────────────────── */}
+        <section>
+          <SectionHeader title="Feature Toggles" />
+          <p className="text-xs text-gray-400 mb-4">
+            Disable a feature to stop its service usage without a code deploy. Changes take effect immediately.
+          </p>
+          <FeatureTogglesPanel />
+        </section>
 
         {/* ── 1. KPI Row ─────────────────────────────────────────────── */}
         <section>
