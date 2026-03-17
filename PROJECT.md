@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-12 (v2.3 — dynamic search: auto-refresh on filter change after first search)
+> Last updated: 2026-03-16 (v2.5 — Browser push notifications)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -23,7 +23,7 @@
 | State | React Context (FavouritesContext), useState |
 | Backend | Supabase (Postgres + PostGIS + RLS + Auth + Edge Functions) |
 | Data | Toronto Open Data (CKAN API) — Open Government Licence |
-| Auth | Supabase Auth — Google OAuth + email/password |
+| Auth | Supabase Auth — Google OAuth + Facebook OAuth + email/password |
 | Hosting | Vercel — https://findrectoronto.vercel.app |
 | Analytics | PostHog (posthog-js + posthog-js/react) |
 | Repo | GitHub private — RohanSartho/FindRec_TO |
@@ -54,6 +54,9 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `dropins` | 29,158 | Drop-in sessions — one row per session occurrence |
 | `seasons` | 1 | Auto-detected season windows (Fall 2025: Sep 2–Jun 19) |
 | `user_favourites` | — | Auth-gated saved locations |
+| `user_dropin_alerts` | — | Auth-gated drop-in alerts: (user_id, location_id, course_title) |
+| `user_program_watchlist` | — | Auth-gated program watchlist: (user_id, course_id, location_id) |
+| `user_push_subscriptions` | — | Auth-gated Web Push subscriptions: (user_id, endpoint, p256dh, auth) |
 | `sync_log` | — | Ingest run history |
 
 ### Key Data Facts
@@ -89,6 +92,9 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0023_backfill_districts.sql` | Backfill district field on locations |
 | `0024_backfill_programs_aquatics_sub_activity.sql` | Backfill sub_activity for aquatics programs |
 | `0025_backfill_ball_hockey.sql` | Reclassify Ball Hockey from `skating` → `sports`; set `sub_activity = 'Ball Hockey'` on both programs + dropins |
+| `0026_user_alerts_and_watchlist.sql` | Create `user_dropin_alerts` + `user_program_watchlist` tables with RLS and unique constraints |
+| `0027_dropin_alerts_add_time.sql` | Add `alert_start_time` + `alert_end_time` to `user_dropin_alerts`; update unique index to include time columns |
+| `0028_push_subscriptions.sql` | Create `user_push_subscriptions` table with RLS (endpoint UNIQUE, user-scoped) |
 
 ---
 
@@ -108,6 +114,9 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/districts` | GET | Distinct districts for filter UI |
 | `/api/seasons` | GET | Season list |
 | `/api/favourites` | GET/POST/DELETE | Auth-gated user favourites |
+| `/api/dropin-alerts` | GET/POST/DELETE | Auth-gated drop-in alerts; GET enriches with sessions in next 14 days; time-slot filter when alert_start/end_time saved |
+| `/api/push-subscribe` | POST/DELETE | Auth-gated Web Push subscription management (upsert by endpoint) |
+| `/api/program-watchlist` | GET/POST/DELETE | Auth-gated program watchlist; GET enriches with live program status + dates |
 | `/api/admin/auth` | POST | Validate admin passphrase, set `admin_token` httpOnly cookie (8hr) |
 | `/api/feedback` | POST | Create Linear issue (Bug or Improvement label) via GraphQL; team + label UUIDs resolved at cold-start |
 | `/api/feedback/upload` | POST | Linear fileUpload mutation → signed S3 URL → PUT image → return assetUrl for issue markdown |
@@ -123,6 +132,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/skating/[asset_id]` | Server | Rink detail — info + timetable |
 | `/venues/[location_id]` | Server | Non-rink venue detail — info + schedule |
 | `/favourites` | Client | Auth-gated saved locations |
+| `/dashboard` | Client | Auth-gated user dashboard — Saved Venues + Drop-in Alerts + Program Watchlist |
 | `/auth/callback` | Route Handler | Supabase OAuth callback |
 | `/auth/error` | Server | Auth error fallback |
 | `/internal-ops-findrecto/login` | Server | Admin login (posts to /api/admin/auth) |
@@ -161,7 +171,7 @@ src/
 │   │   ├── KpiCard.tsx             # Metric tile (label, value, optional trend)
 │   │   └── AdminChart.tsx          # Recharts bar/line chart for admin sections
 │   └── ui/
-│       ├── AuthModal.tsx           # Google OAuth + email sign in/up
+│       ├── AuthModal.tsx           # Google + Facebook OAuth + email sign in/up
 │       ├── FeedbackWidget.tsx      # Fixed bottom-right bubble (sonar ripple); menu → Bug/Feature form → Linear issue
 │       ├── ScrollHint.tsx          # Mobile scroll-hint pill (triggerKey prop — re-shows on each Find click, 30s)
 │       └── StatusBadge.tsx         # open/closed/service_alert/unknown
@@ -172,7 +182,7 @@ src/
 │   ├── context/
 │   │   └── FavouritesContext.tsx   # Single fetch, optimistic toggle, shared state
 │   ├── hooks/
-│   │   ├── useAuth.ts              # User state, sign in/out methods
+│   │   ├── useAuth.ts              # User state, signInWithGoogle, signInWithFacebook, signInWithEmail, signUpWithEmail, signOut
 │   │   └── useFavourite.ts         # Per-location favourite state via context
 │   ├── supabase/
 │   │   ├── client.ts               # Browser Supabase client
@@ -192,6 +202,7 @@ src/
 | `ingest-ckan` | Sunday 7am UTC | Fetch all CKAN datasets, normalize, upsert |
 | `refresh-program-status` | Daily 8am UTC | Lightweight daily refresh of programs.status only from CKAN |
 | `ingest-live-status` | Every 15 min | Fetch live rink status JSON, insert, prune 48hr |
+| `send-dropin-notifications` | Daily 13:00 UTC (8am EST) | Find users with drop-in alerts matching today's sessions → send Web Push via VAPID |
 
 ### ingest-ckan processes (in order):
 1. Locations (from programs dataset)
@@ -263,7 +274,7 @@ Never commit `.env.local`. Keys are in Supabase dashboard → Settings → API.
 | Event | Where | Key Properties |
 |---|---|---|
 | `$pageview` | PostHogProvider | `$current_url` |
-| `auth_login` | useAuth, AuthModal | `method` (google/email) |
+| `auth_login` | useAuth, AuthModal | `method` (google/facebook/email) |
 | `auth_signup` | AuthModal | `method` (email) |
 | `dropin_search` | DropInsSection | `activity_type, sub_activity, date, time_of_day, location_mode, district` |
 | `dropin_search_empty` | DropInsSection | same |
@@ -334,4 +345,6 @@ npx tsc --noEmit                               # Check for type errors
 | 24 | Feedback widget: fixed bottom-right bubble with sonar ripple rings; two-path menu (Report a Bug / Suggest a Feature); forms with title, description, urgency (bug), screenshot upload, optional pre-filled email; /api/feedback creates Linear issues via GraphQL (team + label UUIDs resolved at cold-start); /api/feedback/upload handles Linear fileUpload → S3 PUT → assetUrl in issue markdown. **App version: v2.2** |
 | 25 | Data + UX fixes: district backfill (ingest-ckan wrong field → 1,841 locations now have districts); refresh-program-status deployed (daily status refresh); programs table UX (Days col 2/row, combined Schedule col on mobile, shorter status labels, tighter padding); /testblue + /testblue/activities theme test pages (admin-gated, CSS var override for #096294 blue); homepage copy "100+ → 500+ facilities". |
 | 26 | Dynamic search (Drop-ins + Programs): first search always requires explicit click; after that, discrete filter changes (date, activity, sub-activity, time, location, age) auto-refresh results; text inputs (venue name, program name) require Enter; Find button shows 3 states — cold pulse, "Update Results" pulse (dirty), calm (current); results dim during refresh. **App version: v2.3** |
-| Next | Price/fee data investigation, mobile UX polish, notification system |
+| 27 | Drop-in Alerts (FAV-002): `user_dropin_alerts` table + `/api/dropin-alerts` (GET/POST/DELETE) + dashboard section (session pills for next 7 days) + bell icon button in DropInResultsTable with optimistic state. Program Watchlist (FAV-003): `user_program_watchlist` table + `/api/program-watchlist` (GET/POST/DELETE) + dashboard section (status badge + dates + enrol link + Ended state) + bookmark icon button in ProgramsResultsTable. Sticky calendar header on venue schedule (freeze panes). Tighter list/grid card spacing. Facebook OAuth added to AuthModal + useAuth. Time-specific alerts (alert_start/end_time), 14-day window, navbar notification bell with today's sessions popup, user avatar bubble. **App version: v2.4** |
+| 28 | Browser push notifications: VAPID key generation; `user_push_subscriptions` table (migration 0028) with RLS; `public/sw.js` service worker (push event → showNotification, notificationclick → open /dashboard); `/api/push-subscribe` POST/DELETE; `PushNotificationBanner` on dashboard (subscribe/unsubscribe, permission states); `send-dropin-notifications` Supabase Edge Function with Deno Cron (daily 8am EST) — queries alerts + today's dropins, sends Web Push to all subscribed users, prunes expired subscriptions. **App version: v2.5** |
+| Next | Price/fee data investigation, mobile UX polish, LinkedIn login (pending Meta App Review) |
