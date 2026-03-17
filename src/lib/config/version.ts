@@ -1,5 +1,5 @@
 /** Single source of truth for the app version displayed in the footer. */
-export const APP_VERSION = "2.5";
+export const APP_VERSION = "2.6";
 
 /**
  * Human-readable summary of what each major version added.
@@ -13,4 +13,5 @@ export const VERSION_NOTES: Record<string, string> = {
   "2.3": "Smart search — filters auto-refresh results after your first search",
   "2.4": "Drop-in Alerts + Program Watchlist — track sessions and registrations from your dashboard",
   "2.5": "Browser push notifications — get notified on days you have drop-in sessions",
+  "2.6": "Admin feature toggles — enable or disable features like push notifications without code changes",
 };

@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-16 (v2.5 — Browser push notifications)
+> Last updated: 2026-03-16 (v2.6 — Admin feature toggles)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -95,6 +95,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0026_user_alerts_and_watchlist.sql` | Create `user_dropin_alerts` + `user_program_watchlist` tables with RLS and unique constraints |
 | `0027_dropin_alerts_add_time.sql` | Add `alert_start_time` + `alert_end_time` to `user_dropin_alerts`; update unique index to include time columns |
 | `0028_push_subscriptions.sql` | Create `user_push_subscriptions` table with RLS (endpoint UNIQUE, user-scoped) |
+| `0029_feature_flags.sql` | Create `feature_flags` table (key, enabled, label, description) with public SELECT; seed `push_notifications` flag |
 
 ---
 
@@ -116,6 +117,8 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `/api/favourites` | GET/POST/DELETE | Auth-gated user favourites |
 | `/api/dropin-alerts` | GET/POST/DELETE | Auth-gated drop-in alerts; GET enriches with sessions in next 14 days; time-slot filter when alert_start/end_time saved |
 | `/api/push-subscribe` | POST/DELETE | Auth-gated Web Push subscription management (upsert by endpoint) |
+| `/api/feature-flags` | GET | Public — returns `{ flags: Record<string, boolean> }` map for client feature gating |
+| `/api/admin/feature-flags` | GET/PATCH | Admin-only (admin_token cookie) — full flag list + toggle updates via service_role |
 | `/api/program-watchlist` | GET/POST/DELETE | Auth-gated program watchlist; GET enriches with live program status + dates |
 | `/api/admin/auth` | POST | Validate admin passphrase, set `admin_token` httpOnly cookie (8hr) |
 | `/api/feedback` | POST | Create Linear issue (Bug or Improvement label) via GraphQL; team + label UUIDs resolved at cold-start |
@@ -347,4 +350,5 @@ npx tsc --noEmit                               # Check for type errors
 | 26 | Dynamic search (Drop-ins + Programs): first search always requires explicit click; after that, discrete filter changes (date, activity, sub-activity, time, location, age) auto-refresh results; text inputs (venue name, program name) require Enter; Find button shows 3 states — cold pulse, "Update Results" pulse (dirty), calm (current); results dim during refresh. **App version: v2.3** |
 | 27 | Drop-in Alerts (FAV-002): `user_dropin_alerts` table + `/api/dropin-alerts` (GET/POST/DELETE) + dashboard section (session pills for next 7 days) + bell icon button in DropInResultsTable with optimistic state. Program Watchlist (FAV-003): `user_program_watchlist` table + `/api/program-watchlist` (GET/POST/DELETE) + dashboard section (status badge + dates + enrol link + Ended state) + bookmark icon button in ProgramsResultsTable. Sticky calendar header on venue schedule (freeze panes). Tighter list/grid card spacing. Facebook OAuth added to AuthModal + useAuth. Time-specific alerts (alert_start/end_time), 14-day window, navbar notification bell with today's sessions popup, user avatar bubble. **App version: v2.4** |
 | 28 | Browser push notifications: VAPID key generation; `user_push_subscriptions` table (migration 0028) with RLS; `public/sw.js` service worker (push event → showNotification, notificationclick → open /dashboard); `/api/push-subscribe` POST/DELETE; `PushNotificationBanner` on dashboard (subscribe/unsubscribe, permission states); `send-dropin-notifications` Supabase Edge Function with Deno Cron (daily 8am EST) — queries alerts + today's dropins, sends Web Push to all subscribed users, prunes expired subscriptions. **App version: v2.5** |
+| 29 | Admin feature toggles: `feature_flags` table (migration 0029, public SELECT + service_role write); `/api/feature-flags` public GET; `/api/admin/feature-flags` admin-cookie GET/PATCH; `FeatureTogglesPanel` client component in admin dashboard with toggle switches + optimistic UI; `push_notifications` flag gates `PushNotificationBanner` on dashboard + Edge Function early-exit check. **App version: v2.6** |
 | Next | Price/fee data investigation, mobile UX polish, LinkedIn login (pending Meta App Review) |
