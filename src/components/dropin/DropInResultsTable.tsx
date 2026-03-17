@@ -89,32 +89,37 @@ interface Group {
 // ── Drop-in alert button ──────────────────────────────────────────────────────
 // Renders a bell icon per row. Tracks optimistic state locally; syncs with
 // /api/dropin-alerts on mount to reflect any alerts the user already set.
+// Key format: "locationId:courseTitle:startTime:endTime" — time-specific.
 
 interface DropInAlertButtonProps {
-  locationId: number;
+  locationId:  number;
   courseTitle: string;
-  /** Set of "locationId:courseTitle" keys already tracked by this user */
+  startTime:   string;
+  endTime:     string;
+  /** Set of "locationId:courseTitle:startTime:endTime" keys already tracked */
   trackedKeys: Set<string>;
-  onToggle: (locationId: number, courseTitle: string, isAdding: boolean) => void;
+  onToggle: (locationId: number, courseTitle: string, startTime: string, endTime: string, isAdding: boolean) => void;
   onRequireAuth: () => void;
 }
 
 function DropInAlertButton({
   locationId,
   courseTitle,
+  startTime,
+  endTime,
   trackedKeys,
   onToggle,
   onRequireAuth,
 }: DropInAlertButtonProps) {
   const { user } = useAuth();
-  const key = `${locationId}:${courseTitle}`;
+  const key = `${locationId}:${courseTitle}:${startTime}:${endTime}`;
   const isTracked = trackedKeys.has(key);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!user) { onRequireAuth(); return; }
-    onToggle(locationId, courseTitle, !isTracked);
+    onToggle(locationId, courseTitle, startTime, endTime, !isTracked);
   };
 
   return (
@@ -125,10 +130,11 @@ function DropInAlertButton({
         "p-1 rounded-full transition",
         isTracked
           ? "text-brand hover:text-brand/70"
-          : "text-gray-300 hover:text-brand"
+          // Pulse when not yet tracked — draws attention to the bell feature
+          : "text-gray-300 hover:text-brand animate-pulse"
       )}
     >
-      <Bell size={13} className={isTracked ? "fill-brand" : ""} />
+      <Bell size={20} className={isTracked ? "fill-brand" : ""} />
     </button>
   );
 }
@@ -161,15 +167,21 @@ export function DropInResultsTable({
       .then((r) => r.ok ? r.json() : { data: [] })
       .then(({ data }) => {
         if (!Array.isArray(data)) return;
-        setTrackedKeys(new Set(data.map((a: { location_id: number; course_title: string }) =>
-          `${a.location_id}:${a.course_title}`
-        )));
+        // Key includes time slot so each specific time slot is tracked independently
+        setTrackedKeys(new Set(data.map((a: {
+          location_id: number; course_title: string;
+          alert_start_time: string; alert_end_time: string;
+        }) => `${a.location_id}:${a.course_title}:${a.alert_start_time}:${a.alert_end_time}`)));
       })
       .catch(() => {/* unauthenticated — no alerts to show */});
   }, []);
 
-  const handleAlertToggle = async (locationId: number, courseTitle: string, isAdding: boolean) => {
-    const key = `${locationId}:${courseTitle}`;
+  const handleAlertToggle = async (
+    locationId: number, courseTitle: string,
+    startTime: string, endTime: string,
+    isAdding: boolean,
+  ) => {
+    const key = `${locationId}:${courseTitle}:${startTime}:${endTime}`;
     // Optimistic update
     setTrackedKeys((prev) => {
       const next = new Set(prev);
@@ -181,19 +193,30 @@ export function DropInResultsTable({
       const res = await fetch("/api/dropin-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ location_id: locationId, course_title: courseTitle }),
+        body: JSON.stringify({
+          location_id: locationId,
+          course_title: courseTitle,
+          start_time: startTime,
+          end_time: endTime,
+        }),
       });
       // Roll back on failure (excluding 409 duplicate — keep as tracked)
       if (!res.ok && res.status !== 409) {
         setTrackedKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
       }
     } else {
-      // Find the alert id to delete: re-fetch to get the id
+      // Re-fetch to find the specific alert id matching this (venue + activity + time)
       const listRes = await fetch("/api/dropin-alerts");
       if (listRes.ok) {
         const { data } = await listRes.json();
-        const match = data?.find((a: { id: number; location_id: number; course_title: string }) =>
-          a.location_id === locationId && a.course_title === courseTitle
+        const match = data?.find((a: {
+          id: number; location_id: number; course_title: string;
+          alert_start_time: string; alert_end_time: string;
+        }) =>
+          a.location_id === locationId &&
+          a.course_title === courseTitle &&
+          a.alert_start_time === startTime &&
+          a.alert_end_time === endTime
         );
         if (match) {
           await fetch("/api/dropin-alerts", {
@@ -413,11 +436,13 @@ export function DropInResultsTable({
                             )}
                           </span>
                         </td>
-                        {/* Alert button */}
+                        {/* Alert button — time-specific alert for this row */}
                         <td className="px-3 py-3">
                           <DropInAlertButton
                             locationId={session.location_id}
                             courseTitle={session.course_title}
+                            startTime={session.start_time}
+                            endTime={session.end_time}
                             trackedKeys={trackedKeys}
                             onToggle={handleAlertToggle}
                             onRequireAuth={() => setShowAuthModal(true)}

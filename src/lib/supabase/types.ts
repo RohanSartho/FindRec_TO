@@ -502,6 +502,8 @@ export type Database = {
           user_id: string
           location_id: number
           course_title: string
+          alert_start_time: string
+          alert_end_time: string
           created_at: string
         }
         Insert: {
@@ -509,6 +511,8 @@ export type Database = {
           user_id: string
           location_id: number
           course_title: string
+          alert_start_time?: string
+          alert_end_time?: string
           created_at?: string
         }
         Update: {
@@ -516,6 +520,8 @@ export type Database = {
           user_id?: string
           location_id?: number
           course_title?: string
+          alert_start_time?: string
+          alert_end_time?: string
           created_at?: string
         }
         Relationships: [

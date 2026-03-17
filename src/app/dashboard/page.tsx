@@ -37,6 +37,8 @@ interface DropinAlert {
   id: number;
   location_id: number;
   course_title: string;
+  alert_start_time: string;
+  alert_end_time: string;
   created_at: string;
   location_name: string;
   sessions: DropinSession[];
@@ -336,11 +338,11 @@ export default function DashboardPage() {
             {alerts.map((alert) => (
               <div
                 key={alert.id}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-3"
+                className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col gap-2"
               >
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 flex-wrap">
+                {/* Header row: activity + venue + saved time + remove */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
                     <span className="font-semibold text-sm text-gray-900">{alert.course_title}</span>
                     <span className="text-xs text-gray-400">at</span>
                     <Link
@@ -349,34 +351,38 @@ export default function DashboardPage() {
                     >
                       {alert.location_name}
                     </Link>
+                    {/* Show saved time slot if present */}
+                    {alert.alert_start_time && alert.alert_end_time && (
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        · {formatSessionPill({ first_date: "", start_time: alert.alert_start_time, end_time: alert.alert_end_time }).replace(/^.*·\s*/, "")}
+                      </span>
+                    )}
                   </div>
-
-                  {/* Session pills */}
-                  {alert.sessions.length === 0 ? (
-                    <p className="text-xs text-gray-400 mt-1.5">No sessions in the next 7 days</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {alert.sessions.map((s, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand/8 text-brand border border-brand/20"
-                        >
-                          <CalendarDays size={10} className="shrink-0" />
-                          {formatSessionPill(s)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => removeAlert(alert.id)}
+                    className="shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition"
+                    aria-label="Remove alert"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
 
-                {/* Remove button */}
-                <button
-                  onClick={() => removeAlert(alert.id)}
-                  className="self-start shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition"
-                  aria-label="Remove alert"
-                >
-                  <X size={14} />
-                </button>
+                {/* Session pills */}
+                {alert.sessions.length === 0 ? (
+                  <p className="text-xs text-gray-400">No sessions in the next 14 days</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {alert.sessions.map((s, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200"
+                      >
+                        <CalendarDays size={10} className="shrink-0" />
+                        {formatSessionPill(s)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
