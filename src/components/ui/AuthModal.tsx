@@ -31,7 +31,19 @@ export function AuthModal({ isOpen, onClose, message }: AuthModalProps) {
       const fn = mode === "signin" ? signInWithEmail : signUpWithEmail;
       const { error } = await fn(email, password);
       if (error) {
-        setError(error.message);
+        // Friendlier message for duplicate-account scenarios
+        const msg = error.message ?? "";
+        if (
+          msg.toLowerCase().includes("already registered") ||
+          msg.toLowerCase().includes("already been registered") ||
+          msg.toLowerCase().includes("user_already_exists")
+        ) {
+          setError(
+            "This email is already registered. Try signing in, or use Google / Facebook if you signed up with those."
+          );
+        } else {
+          setError(msg);
+        }
       } else {
         posthog.capture(mode === "signin" ? "auth_login" : "auth_signup", { method: "email" });
         onClose();

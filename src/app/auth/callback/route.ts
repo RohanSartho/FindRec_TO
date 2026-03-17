@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
+    // Pass error reason so the error page can show a helpful message
+    const reason = encodeURIComponent(error.code ?? error.message ?? "unknown");
+    return NextResponse.redirect(`${origin}/auth/error?reason=${reason}`);
   }
 
-  return NextResponse.redirect(`${origin}/auth/error`);
+  return NextResponse.redirect(`${origin}/auth/error?reason=no_code`);
 }
