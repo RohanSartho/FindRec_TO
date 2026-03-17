@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-16 (v2.6 — Admin feature toggles)
+> Last updated: 2026-03-17 (v2.6 — auth dedup fix, migration cleanup)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -57,6 +57,7 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `user_dropin_alerts` | — | Auth-gated drop-in alerts: (user_id, location_id, course_title) |
 | `user_program_watchlist` | — | Auth-gated program watchlist: (user_id, course_id, location_id) |
 | `user_push_subscriptions` | — | Auth-gated Web Push subscriptions: (user_id, endpoint, p256dh, auth) |
+| `feature_flags` | — | Admin-controlled feature toggles (key, enabled, label, description); public SELECT, service_role writes |
 | `sync_log` | — | Ingest run history |
 
 ### Key Data Facts
@@ -74,24 +75,13 @@ Toronto Live JSON (15min) ──→ Edge Function: ingest-live-status ──→ 
 | `0002_sync_log.sql` | Sync run tracking |
 | `0003_postgis_helpers.sql` | `set_location_coordinates`, `locations_near` RPCs |
 | `0004_schema_additions.sql` | `last_synced_at`, `data_source`, dropin unique constraint fix |
-| `0005_orphan_rink_stubs.sql` | 3 orphan location + rink stubs |
-| `0006_coordinate_backfill_helper.sql` | Backfill PostGIS coords from raw_geometry |
 | `0007_dropin_unique_fix.sql` | Correct unique key: (course_id, location_id, first_date) |
 | `0011_sub_activity.sql` | Add sub_activity column to dropins + programs; fix Pickleball/Badminton/Tai Chi activity_type; backfill sub_activity via ILIKE |
-| `0012_backfill_addresses.sql` | Backfill address + postal_code for 1,922 locations from CKAN component fields (Street No / Street Name / Street Type / Street Direction) |
 | `0013_venue_type.sql` | Add venue_type TEXT column to locations (indoor/outdoor) |
-| `0014_backfill_venue_types.sql` | Backfill venue_type from CKAN facilities (147 indoor, 291 outdoor) |
 | `0015_location_lat_lng.sql` | Add lat/lng float columns to locations, backfilled from PostGIS coordinates |
-| `0016_backfill_missing_coords.sql` | Manual geocode for 7 active community centres that had no geometry (Adam Beck, Annette, Beaches, Bedford Park, Bob Abate, David Appleton, Eglinton Flats) |
-| `0017_locations_near_fix.sql` | Fix `locations_near` RPC — SQL param collision with `lat`/`lng` column names |
-| `0018_backfill_missing_coords.sql` | Geocode all 227 active venues (appearing in dropins or programs) with `lat IS NULL`; 225 via Nominatim + 2 manual; covers aquatics pools, community centres, arenas, schools |
-| `0019_activity_location_ids_rpc.sql` | New RPC `location_ids_for_activity(p_activity_type, p_sub_activity)` — UNION DISTINCT on dropins+programs to bypass Supabase 1000-row cap; fixes aquatics venues missing from map (was 5/16, now 76 locations) |
-| `0020_remove_timbrell_stub.sql` | Delete fake rink stub (asset_id=99001) inserted for Dennis R. Timbrell in Phase 11 — caused wrong `/skating/99001` routing |
-| `0021_fix_aquatic_fitness_sub_activity.sql` | Correct sub_activity for all "Aquatic Fitness: …" drop-ins from "Leisure Swim" (wrong ILIKE backfill in 0011) to "Aquafit" |
+| `0017_fix_locations_near_param_collision.sql` | Fix `locations_near` RPC — SQL param collision with `lat`/`lng` column names |
+| `0019_activity_location_ids_rpc.sql` | New RPC `location_ids_for_activity(p_activity_type, p_sub_activity)` — UNION DISTINCT on dropins+programs to bypass Supabase 1000-row cap |
 | `0022_dropin_unique_add_start_time.sql` | Add start_time to dropin unique key — multiple time slots per course_id on same day |
-| `0023_backfill_districts.sql` | Backfill district field on locations |
-| `0024_backfill_programs_aquatics_sub_activity.sql` | Backfill sub_activity for aquatics programs |
-| `0025_backfill_ball_hockey.sql` | Reclassify Ball Hockey from `skating` → `sports`; set `sub_activity = 'Ball Hockey'` on both programs + dropins |
 | `0026_user_alerts_and_watchlist.sql` | Create `user_dropin_alerts` + `user_program_watchlist` tables with RLS and unique constraints |
 | `0027_dropin_alerts_add_time.sql` | Add `alert_start_time` + `alert_end_time` to `user_dropin_alerts`; update unique index to include time columns |
 | `0028_push_subscriptions.sql` | Create `user_push_subscriptions` table with RLS (endpoint UNIQUE, user-scoped) |
@@ -172,7 +162,8 @@ src/
 │   │   └── AnalyticsPageEvent.tsx  # Client bridge: fires posthog event on mount (for server pages)
 │   ├── admin/
 │   │   ├── KpiCard.tsx             # Metric tile (label, value, optional trend)
-│   │   └── AdminChart.tsx          # Recharts bar/line chart for admin sections
+│   │   ├── AdminChart.tsx          # Recharts bar/line chart for admin sections
+│   │   └── FeatureTogglesPanel.tsx # Toggle switches for feature_flags table; optimistic UI + rollback
 │   └── ui/
 │       ├── AuthModal.tsx           # Google + Facebook OAuth + email sign in/up
 │       ├── FeedbackWidget.tsx      # Fixed bottom-right bubble (sonar ripple); menu → Bug/Feature form → Linear issue
@@ -269,6 +260,9 @@ NEXT_PUBLIC_POSTHOG_HOST=        # https://us.i.posthog.com
 POSTHOG_PRIVATE_KEY=             # phx_... — server-only, for HogQL Query API
 POSTHOG_PROJECT_ID=              # numeric PostHog project ID
 ADMIN_SECRET=                    # passphrase for /internal-ops-findrecto (64-char hex)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=    # VAPID public key for Web Push (safe to be public)
+VAPID_PRIVATE_KEY=               # VAPID private key (server-only, never expose)
+VAPID_SUBJECT=                   # mailto: or https: contact for VAPID header
 ```
 
 Never commit `.env.local`. Keys are in Supabase dashboard → Settings → API.
@@ -351,4 +345,5 @@ npx tsc --noEmit                               # Check for type errors
 | 27 | Drop-in Alerts (FAV-002): `user_dropin_alerts` table + `/api/dropin-alerts` (GET/POST/DELETE) + dashboard section (session pills for next 7 days) + bell icon button in DropInResultsTable with optimistic state. Program Watchlist (FAV-003): `user_program_watchlist` table + `/api/program-watchlist` (GET/POST/DELETE) + dashboard section (status badge + dates + enrol link + Ended state) + bookmark icon button in ProgramsResultsTable. Sticky calendar header on venue schedule (freeze panes). Tighter list/grid card spacing. Facebook OAuth added to AuthModal + useAuth. Time-specific alerts (alert_start/end_time), 14-day window, navbar notification bell with today's sessions popup, user avatar bubble. **App version: v2.4** |
 | 28 | Browser push notifications: VAPID key generation; `user_push_subscriptions` table (migration 0028) with RLS; `public/sw.js` service worker (push event → showNotification, notificationclick → open /dashboard); `/api/push-subscribe` POST/DELETE; `PushNotificationBanner` on dashboard (subscribe/unsubscribe, permission states); `send-dropin-notifications` Supabase Edge Function with Deno Cron (daily 8am EST) — queries alerts + today's dropins, sends Web Push to all subscribed users, prunes expired subscriptions. **App version: v2.5** |
 | 29 | Admin feature toggles: `feature_flags` table (migration 0029, public SELECT + service_role write); `/api/feature-flags` public GET; `/api/admin/feature-flags` admin-cookie GET/PATCH; `FeatureTogglesPanel` client component in admin dashboard with toggle switches + optimistic UI; `push_notifications` flag gates `PushNotificationBanner` on dashboard + Edge Function early-exit check. **App version: v2.6** |
+| 30 | Auth dedup + housekeeping: Supabase identity linking enabled (same-email accounts across Google/Facebook/email now merge automatically); `auth/callback` passes error code to `/auth/error` page; `/auth/error` shows context-aware messages (duplicate account, unverified email, etc.); `AuthModal` friendlier error for already-registered email. `VERSION_NOTES` compacted to single-line entries. 14 one-off backfill migration files deleted (Timbrell fixes, coordinate backfills, data reclassifications). |
 | Next | Price/fee data investigation, mobile UX polish, LinkedIn login (pending Meta App Review) |
