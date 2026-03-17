@@ -123,19 +123,26 @@ function DropInAlertButton({
   };
 
   return (
-    <button
-      onClick={handleClick}
-      title={isTracked ? "Remove drop-in alert" : "Get alerted when this drop-in runs"}
-      className={clsx(
-        "p-1 rounded-full transition",
-        isTracked
-          ? "text-brand hover:text-brand/70"
-          // Pulse when not yet tracked — draws attention to the bell feature
-          : "text-gray-300 hover:text-brand animate-pulse"
-      )}
-    >
-      <Bell size={20} className={isTracked ? "fill-brand" : ""} />
-    </button>
+    // Tooltip wrapper — shows instantly on hover (no browser title delay)
+    <div className="relative group/bell inline-flex">
+      <button
+        onClick={handleClick}
+        className={clsx(
+          "p-1.5 rounded-full transition",
+          isTracked
+            ? "text-brand hover:text-brand/70"
+            : "text-gray-300 hover:text-brand animate-pulse"
+        )}
+      >
+        <Bell size={18} className={isTracked ? "fill-brand" : ""} />
+      </button>
+      {/* Instant tooltip — no delay via duration-0 */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[11px] font-medium bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/bell:opacity-100 pointer-events-none transition-opacity duration-0 z-50">
+        {isTracked ? "Remove alert" : "Alert me for this time slot"}
+        {/* Arrow */}
+        <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+      </div>
+    </div>
   );
 }
 
@@ -154,15 +161,19 @@ export function DropInResultsTable({
   returnTo,
   searchTrigger,
 }: DropInResultsTableProps) {
+  const { user } = useAuth();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<SortCol>("time");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  // Tracked alert keys: "locationId:courseTitle" — synced from API on mount
+  // Tracked alert keys — re-fetched whenever auth state changes (sign in / sign out)
   const [trackedKeys, setTrackedKeys] = useState<Set<string>>(new Set());
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
+    // Clear immediately when signed out so stale bells don't persist
+    if (!user) { setTrackedKeys(new Set()); return; }
+
     fetch("/api/dropin-alerts")
       .then((r) => r.ok ? r.json() : { data: [] })
       .then(({ data }) => {
@@ -173,8 +184,8 @@ export function DropInResultsTable({
           alert_start_time: string; alert_end_time: string;
         }) => `${a.location_id}:${a.course_title}:${a.alert_start_time}:${a.alert_end_time}`)));
       })
-      .catch(() => {/* unauthenticated — no alerts to show */});
-  }, []);
+      .catch(() => {});
+  }, [user]); // re-run on sign in / sign out
 
   const handleAlertToggle = async (
     locationId: number, courseTitle: string,
