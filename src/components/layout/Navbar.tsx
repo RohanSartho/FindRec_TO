@@ -112,6 +112,19 @@ export function Navbar() {
   const { user, loading, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showVersion, setShowVersion] = useState(false);
+  const versionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showVersion) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (versionRef.current && !versionRef.current.contains(e.target as Node)) {
+        setShowVersion(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showVersion]);
 
   return (
     <>
@@ -182,11 +195,14 @@ export function Navbar() {
             )}
 
             {/* Version badge */}
-            <div className="group relative">
-              <span className="inline-flex items-center px-2 py-1 rounded-full border border-gray-200 text-gray-400 font-mono text-[11px] cursor-default select-none hover:border-brand/40 hover:text-brand transition-colors">
+            <div className="relative" ref={versionRef}>
+              <button
+                onClick={() => setShowVersion(v => !v)}
+                className="inline-flex items-center px-2 py-1 rounded-full border border-gray-200 text-gray-400 font-mono text-[11px] select-none hover:border-brand/40 hover:text-brand transition-colors"
+              >
                 v{APP_VERSION}
-              </span>
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 shadow-lg rounded-xl p-3 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50">
+              </button>
+              <div className={`absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 shadow-lg rounded-xl p-3 transition-opacity duration-150 z-50 ${showVersion ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
                 <p className="text-xs font-semibold mb-2" style={{ color: "#1a3a2a", fontFamily: "var(--font-fraunces), serif" }}>
                   What&apos;s in each version
                 </p>
