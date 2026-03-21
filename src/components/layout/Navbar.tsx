@@ -46,13 +46,18 @@ function TodayAlertsBell() {
       .catch(() => {});
   }, []);
 
-  // Close popup on outside click
+  // Close popup on outside click or scroll
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const clickHandler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const scrollHandler = () => setOpen(false);
+    document.addEventListener("mousedown", clickHandler);
+    window.addEventListener("scroll", scrollHandler, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", clickHandler);
+      window.removeEventListener("scroll", scrollHandler);
+    };
   }, []);
 
   const fmt = (t: string) => {
@@ -77,7 +82,7 @@ function TodayAlertsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="fixed top-14 left-2 right-2 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 bg-white border border-gray-100 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-700">Today&apos;s Drop-in Sessions</p>
           </div>

@@ -245,7 +245,7 @@ export function DropInFilterPanel({
 
         {/* Date */}
         <div
-          className={filterBorder(dateTouched)}
+          className={clsx(filterBorder(dateTouched), "overflow-hidden")}
           style={BRAND_BORDER}
         >
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
@@ -399,7 +399,7 @@ export function DropInFilterPanel({
               }}
               onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
               className={clsx(
-                "w-full border rounded-lg pl-6 pr-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand",
+                "w-full border rounded-lg pl-6 pr-2 py-1.5 text-base sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand",
                 filters.venueSearch ? "border-[#1a3a2a] border-2" : "border-gray-200"
               )}
             />
@@ -470,7 +470,7 @@ export function DropInFilterPanel({
               onChange={(e) => handleQueryChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
               className={clsx(
-                "w-full border rounded-lg pl-6 pr-5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand",
+                "w-full border rounded-lg pl-6 pr-5 py-1.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand",
                 filters.query ? "border-[#1a3a2a] border-2" : "border-gray-200"
               )}
             />
