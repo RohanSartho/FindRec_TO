@@ -202,7 +202,7 @@ export function VenuesSection() {
             value={nameSearch}
             onChange={(e) => setNameSearch(e.target.value)}
             placeholder="Search by name…"
-            className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand w-44 bg-white shadow-sm"
+            className="border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-base sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand w-44 bg-white shadow-sm"
           />
         </div>
 
