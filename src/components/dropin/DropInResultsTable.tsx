@@ -9,6 +9,7 @@ import posthog from "posthog-js";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { AuthModal } from "@/components/ui/AuthModal";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { User } from "@supabase/supabase-js";
 
 interface Session {
   course_id: number;
@@ -98,6 +99,7 @@ interface DropInAlertButtonProps {
   endTime:     string;
   /** Set of "locationId:courseTitle:startTime:endTime" keys already tracked */
   trackedKeys: Set<string>;
+  user: User | null;
   onToggle: (locationId: number, courseTitle: string, startTime: string, endTime: string, isAdding: boolean) => void;
   onRequireAuth: () => void;
 }
@@ -108,10 +110,10 @@ function DropInAlertButton({
   startTime,
   endTime,
   trackedKeys,
+  user,
   onToggle,
   onRequireAuth,
 }: DropInAlertButtonProps) {
-  const { user } = useAuth();
   const key = `${locationId}:${courseTitle}:${startTime}:${endTime}`;
   const isTracked = trackedKeys.has(key);
 
@@ -455,6 +457,7 @@ export function DropInResultsTable({
                             startTime={session.start_time}
                             endTime={session.end_time}
                             trackedKeys={trackedKeys}
+                            user={user}
                             onToggle={handleAlertToggle}
                             onRequireAuth={() => setShowAuthModal(true)}
                           />

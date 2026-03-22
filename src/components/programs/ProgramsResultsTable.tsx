@@ -10,6 +10,7 @@ import posthog from "posthog-js";
 import { ScrollHint } from "@/components/ui/ScrollHint";
 import { AuthModal } from "@/components/ui/AuthModal";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { User } from "@supabase/supabase-js";
 
 interface Program {
   course_id: number | null;
@@ -151,6 +152,7 @@ interface ProgramWatchlistButtonProps {
   locationId: number | null;
   /** Set of "courseId:locationId" keys already on this user's watchlist */
   watchedKeys: Set<string>;
+  user: User | null;
   onToggle: (courseId: number, locationId: number, isAdding: boolean) => void;
   onRequireAuth: () => void;
 }
@@ -159,10 +161,10 @@ function ProgramWatchlistButton({
   courseId,
   locationId,
   watchedKeys,
+  user,
   onToggle,
   onRequireAuth,
 }: ProgramWatchlistButtonProps) {
-  const { user } = useAuth();
   if (!courseId || !locationId) return null;
 
   const key = `${courseId}:${locationId}`;
@@ -494,6 +496,7 @@ export function ProgramsResultsTable({
                               courseId={prog.course_id}
                               locationId={prog.location_id}
                               watchedKeys={watchedKeys}
+                              user={user}
                               onToggle={handleWatchlistToggle}
                               onRequireAuth={() => setShowAuthModal(true)}
                             />
