@@ -203,11 +203,13 @@ export function ProgramsResultsTable({
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // Watched keys: "courseId:locationId" — synced from API on mount
+  // Watched keys: "courseId:locationId" — synced from API on mount and on auth change
   const [watchedKeys, setWatchedKeys] = useState<Set<string>>(new Set());
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) { setWatchedKeys(new Set()); return; }
     fetch("/api/program-watchlist")
       .then((r) => r.ok ? r.json() : { data: [] })
       .then(({ data }) => {
@@ -217,7 +219,7 @@ export function ProgramsResultsTable({
         )));
       })
       .catch(() => {/* unauthenticated — no watchlist to show */});
-  }, []);
+  }, [user]);
 
   const handleWatchlistToggle = async (courseId: number, locationId: number, isAdding: boolean) => {
     const key = `${courseId}:${locationId}`;
