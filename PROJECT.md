@@ -1,6 +1,6 @@
 # FindRec TO — Project Memory
 
-> Last updated: 2026-03-17 (v2.6 — auth dedup fix, migration cleanup)
+> Last updated: 2026-03-22 (v2.5 — mobile fixes, session bug fixes)
 > Read this file at the start of every session before doing anything.
 
 ---
@@ -232,6 +232,12 @@ src/
 | Admin dashboard dark theme mismatch | Fixed | Restyled `/internal-ops-findrecto` + login page to match site-wide palette: `#f5f2ec` bg, white cards, brand green Fraunces headings, gray-100 borders |
 | Location district always null | Fixed | `ingest-ckan` was reading `"Community Council Area"` (always None in CKAN); corrected to `"District"` field; re-ingested → 1,841 locations now have districts |
 | `refresh-program-status` never deployed | Fixed | Daily status refresh edge function deployed; was missing from Supabase, program statuses only refreshed weekly |
+| Version badge not working on mobile | Fixed | Was CSS hover-only (`group-hover`); converted to click toggle with `useState` + click-outside handler |
+| Bell popup pushed off-screen on mobile | Fixed | Changed from `absolute right-0` (overflowed left on narrow screens) to `fixed` full-width below nav on mobile; also closes on scroll |
+| iOS auto-zoom on text input focus | Fixed | All text inputs (venue search, program name, venues name search) set to `text-base` on mobile — iOS only zooms for font-size < 16px |
+| Date filter border protruding on mobile | Fixed | Added `overflow-hidden` to date section wrapper to clip native date picker's separator line |
+| Program watchlist prompts login after page load | Fixed | `ProgramsResultsTable` useEffect had `[]` dep — never re-fetched after sign-in; changed to `[user]` dep, clears on sign-out |
+| Alert/watchlist buttons prompt login after new search | Fixed | `DropInAlertButton` and `ProgramWatchlistButton` each called `useAuth()` independently — new search rows start with `user=null` for ~100-300ms; moved `user` resolution to parent table component, passed as prop |
 
 ---
 
@@ -346,4 +352,5 @@ npx tsc --noEmit                               # Check for type errors
 | 28 | Browser push notifications: VAPID key generation; `user_push_subscriptions` table (migration 0028) with RLS; `public/sw.js` service worker (push event → showNotification, notificationclick → open /dashboard); `/api/push-subscribe` POST/DELETE; `PushNotificationBanner` on dashboard (subscribe/unsubscribe, permission states); `send-dropin-notifications` Supabase Edge Function with Deno Cron (daily 8am EST) — queries alerts + today's dropins, sends Web Push to all subscribed users, prunes expired subscriptions. **App version: v2.5** |
 | 29 | Admin feature toggles: `feature_flags` table (migration 0029, public SELECT + service_role write); `/api/feature-flags` public GET; `/api/admin/feature-flags` admin-cookie GET/PATCH; `FeatureTogglesPanel` client component in admin dashboard with toggle switches + optimistic UI; `push_notifications` flag gates `PushNotificationBanner` on dashboard + Edge Function early-exit check. **App version: v2.6** |
 | 30 | Auth dedup + housekeeping: Supabase identity linking enabled (same-email accounts across Google/Facebook/email now merge automatically); `auth/callback` passes error code to `/auth/error` page; `/auth/error` shows context-aware messages (duplicate account, unverified email, etc.); `AuthModal` friendlier error for already-registered email. `VERSION_NOTES` compacted to single-line entries. 14 one-off backfill migration files deleted (Timbrell fixes, coordinate backfills, data reclassifications). |
-| Next | Price/fee data investigation, mobile UX polish, LinkedIn login (pending Meta App Review) |
+| 31 | Mobile + session bug fixes: version badge click-toggle (was hover-only); bell popup fixed positioning on mobile + scroll-to-close; iOS input zoom prevented (`text-base` on mobile); date filter border clipped (`overflow-hidden`); program watchlist `useEffect([user])` fix; alert/watchlist buttons now receive `user` as prop from parent table instead of calling `useAuth()` per-row (eliminated race condition where new search rows started with `user=null`). **App version: v2.5** (merged v2.4+v2.5 notes; dropped v2.6 label) |
+| Next | n8n feedback pipeline (Phase 1 plan ready), price/fee data investigation, LinkedIn login (pending Meta App Review) |
