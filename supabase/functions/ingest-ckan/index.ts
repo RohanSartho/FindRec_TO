@@ -463,7 +463,9 @@ Deno.serve(async (_req) => {
     if (facilities.length > 0) {
       for (let i = 0; i < facilities.length; i += UPSERT_CHUNK) {
         const chunk = facilities.slice(i, i + UPSERT_CHUNK);
-        const { error } = await supabase.from("facilities").insert(chunk);
+        const result = await supabase.from("facilities").insert(chunk);
+        if (!result) throw new Error(`facilities insert (offset ${i}): No response from Supabase`);
+        const { error } = result;
         if (error) throw new Error(`facilities insert (offset ${i}): ${error.message}`);
       }
     }
@@ -522,7 +524,7 @@ Deno.serve(async (_req) => {
 
       if (!existingSeason) {
         // New season detected — insert it
-        await supabase.from("seasons").insert({
+        const insertRes = await supabase.from("seasons").insert({
           season_name: seasonName,
           season_label: seasonLabel,
           start_date: minStart.toISOString().split("T")[0],
@@ -530,12 +532,16 @@ Deno.serve(async (_req) => {
           is_current: true,
           notes: `Auto-detected from programs dataset on ${new Date().toISOString().split("T")[0]}`,
         });
+        if (!insertRes) throw new Error("seasons insert: No response from Supabase");
+        if (insertRes.error) throw new Error(`seasons insert: ${insertRes.error.message}`);
 
         // Mark all other seasons as not current
-        await supabase
+        const updateRes = await supabase
           .from("seasons")
           .update({ is_current: false })
           .neq("season_name", seasonName);
+        if (!updateRes) throw new Error("seasons update: No response from Supabase");
+        if (updateRes.error) throw new Error(`seasons update: ${updateRes.error.message}`);
 
         rowCounts.new_season_detected = 1;
         rowCounts.season_name = seasonName as any;
@@ -591,11 +597,13 @@ Deno.serve(async (_req) => {
         if (geo?.type === "Point" && Array.isArray(geo?.coordinates) && geo.coordinates.length === 2) {
           const [lng, lat] = geo.coordinates;
           if (typeof lng === "number" && typeof lat === "number") {
-            const { error } = await supabase.rpc("set_location_coordinates", {
+            const result = await supabase.rpc("set_location_coordinates", {
               loc_id: loc.id,
               lat,
               lng,
             });
+            if (!result) throw new Error(`set_location_coordinates RPC: No response from Supabase`);
+            const { error } = result;
             if (!error) coordsUpdated++;
           }
         }
