@@ -122,8 +122,8 @@ export function DropInFilterPanel({
   // ── Search handler ────────────────────────────────────────────────────────
 
   const handleSearch = () => {
-    // In cold state, require an activity choice or text query before first search
-    if (!searchDone && !activityChosen && !filters.query) return;
+    // In cold state, require an activity choice, text query, or pre-selected programs before first search
+    if (!searchDone && !activityChosen && !filters.query && filters.selectedPrograms.length === 0) return;
     // Mark all sections touched so attention borders all appear
     setDateTouched(true);
     setTimeTouched(true);
