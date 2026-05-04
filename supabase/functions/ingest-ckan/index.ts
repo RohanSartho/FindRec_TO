@@ -177,7 +177,9 @@ async function batchUpsert(
     const upsertOptions = onConflict
       ? { onConflict, ignoreDuplicates: false }
       : { ignoreDuplicates: false };
-    const { error } = await supabase.from(table).upsert(batch, upsertOptions);
+    const result = await supabase.from(table).upsert(batch, upsertOptions);
+    if (!result) throw new Error(`batchUpsert ${table}: No response from Supabase`);
+    const { error } = result;
     if (error) throw new Error(`batchUpsert ${table}: ${error.message}`);
   }
 }
@@ -190,11 +192,12 @@ Deno.serve(async (_req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data: logEntry } = await supabase
+  const { data: logEntry, error: logError } = await supabase
     .from("sync_log")
     .insert({ function_name: "ingest-ckan", status: "running" })
     .select()
     .single();
+  if (logError) throw new Error(`Failed to create sync_log entry: ${logError.message}`);
   const logId = logEntry?.id;
 
   const rowCounts: Record<string, number> = {};
