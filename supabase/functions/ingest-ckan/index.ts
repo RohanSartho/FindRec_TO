@@ -187,22 +187,24 @@ async function batchUpsert(
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (_req) => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
-  const { data: logEntry, error: logError } = await supabase
-    .from("sync_log")
-    .insert({ function_name: "ingest-ckan", status: "running" })
-    .select()
-    .single();
-  if (logError) throw new Error(`Failed to create sync_log entry: ${logError.message}`);
-  const logId = logEntry?.id;
-
-  const rowCounts: Record<string, number> = {};
-
   try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
+
+    const supabase = createClient(url, key);
+
+    const { data: logEntry, error: logError } = await supabase
+      .from("sync_log")
+      .insert({ function_name: "ingest-ckan", status: "running" })
+      .select()
+      .single();
+    if (logError) throw new Error(`Failed to create sync_log entry: ${logError?.message || JSON.stringify(logError)}`);
+    if (!logEntry) throw new Error("No log entry returned from insert");
+    const logId = logEntry?.id;
+
+    const rowCounts: Record<string, number> = {};
+
     // ── 1. LOCATIONS (from programs dataset locations sub-table) ──────────────
     const locationsPkg = await fetchCkanPackage("registered-programs-and-drop-in-courses-offering");
     const locationsResourceId = locationsPkg?.resources?.find((r: any) =>
@@ -533,7 +535,7 @@ Deno.serve(async (_req) => {
           notes: `Auto-detected from programs dataset on ${new Date().toISOString().split("T")[0]}`,
         });
         if (!insertRes) throw new Error("seasons insert: No response from Supabase");
-        if (insertRes.error) throw new Error(`seasons insert: ${insertRes.error.message}`);
+        if (insertRes.error) throw new Error(`seasons insert: ${insertRes.error?.message || JSON.stringify(insertRes.error)}`);
 
         // Mark all other seasons as not current
         const updateRes = await supabase
@@ -541,7 +543,7 @@ Deno.serve(async (_req) => {
           .update({ is_current: false })
           .neq("season_name", seasonName);
         if (!updateRes) throw new Error("seasons update: No response from Supabase");
-        if (updateRes.error) throw new Error(`seasons update: ${updateRes.error.message}`);
+        if (updateRes.error) throw new Error(`seasons update: ${updateRes.error?.message || JSON.stringify(updateRes.error)}`);
 
         rowCounts.new_season_detected = 1;
         rowCounts.season_name = seasonName as any;
@@ -623,13 +625,21 @@ Deno.serve(async (_req) => {
     });
 
   } catch (err: any) {
-    await supabase.from("sync_log").update({
-      status: "failed",
-      finished_at: new Date().toISOString(),
-      error_message: err.message,
-    }).eq("id", logId);
+    const errorMsg = err?.message || JSON.stringify(err) || "Unknown error";
+    try {
+      const logUpdateRes = await supabase.from("sync_log").update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: errorMsg,
+      }).eq("id", logId);
+      if (logUpdateRes?.error) {
+        console.error("Failed to log error:", logUpdateRes.error);
+      }
+    } catch (logErr) {
+      console.error("Caught error logging error:", logErr);
+    }
 
-    return new Response(JSON.stringify({ ok: false, error: err.message }), {
+    return new Response(JSON.stringify({ ok: false, error: errorMsg }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
