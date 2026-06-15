@@ -279,9 +279,20 @@ export function DropInResultsTable({
   if (groups.length === 0) {
     return (
       <div className="text-center py-16 text-gray-500">
-        <p className="text-lg font-medium mb-1">No drop-in sessions found</p>
-        <p className="text-sm">
-          Try a different date, location, or program type.
+        <p className="text-lg font-medium mb-2">No drop-in sessions on {dateLabel}</p>
+        <p className="text-sm mb-6">
+          The City of Toronto hasn't published drop-in schedules for this date yet.
+        </p>
+        <div className="text-sm space-y-2">
+          <p className="text-gray-400">
+            ✓ Try a date earlier in the week (Mon–Thu typically have more sessions)
+          </p>
+          <p className="text-gray-400">
+            ✓ Verify your activity filters match available programs
+          </p>
+        </div>
+        <p className="text-xs text-gray-400 mt-6">
+          Data updates weekly from Toronto Parks & Recreation.
         </p>
       </div>
     );
